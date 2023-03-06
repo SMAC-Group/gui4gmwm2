@@ -1,0 +1,11 @@
+name: gui4gmwm
+title:
+username:
+account: data-analytics-lab
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4860782
+bundleId: 6921966
+url: https://data-analytics-lab.shinyapps.io/gui4gmwm/
+when: 1678119424.70015
+lastSyncTime: 1678119424.70018
