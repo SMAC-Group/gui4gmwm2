@@ -1,13 +1,14 @@
 # source("R/plot_wv_and_datasheet.R")
 # remotes::install_github(repo = "https://github.com/SMAC-Group/gmwm", ref = "gmwm2")
 # remotes::install_github(repo = "https://github.com/SMAC-Group/wv", force = T)
-
+library(wv)
 library(gmwm)
 library(scales)
 library(reshape)
 library(shiny)
 library(shinydashboard)
 library(leaflet)
+
 
 # load data wavelet
 load("data/imudata.RData")
@@ -104,13 +105,6 @@ sigma2_T <- function(T, f0, B) {
 
 
 
-
-# loading the four internal datasets
-# data("navchip") # NAVCHIP
-# imu6 <- imu(imu6, gyros = 1:3, accels = 4:6, axis = c("X", "Y", "Z", "X", "Y", "Z"), freq = 100) # MTIG
-# data("imar.gyro") # IMAR
-# data("ln200.gyro") # LN200
-
 smac_url <- a("https://github.com/SMAC-Group/gui4gmwm2", href = "https://github.com/SMAC-Group/gui4gmwm2")
 smac_url_description <- "gui4gmwm GitHub repository:"
 
@@ -126,45 +120,73 @@ ui <- shinyUI(fluidPage(
   title = "GMWM GUI",
   tabsetPanel(
     id = "tabs",
-    # tabPanel("Model Data", plotOutput(outputId = "plot", height = const.FIGURE_PLOT_HEIGHT)),
     tabPanel("Wavelet Variance", plotOutput(outputId = "plot_wv", 
                                             height = const.FIGURE_PLOT_HEIGHT,
                                             width = 1200),
-             column(
-               3,
-               selectInput("imu_obj", "Select IMU file:",
-                           names(data),
-                           selected = 1
-               ),
-               selectInput("selected_sensor", "Select sensor", choices = "Gyro.X", selected = "Gyro.X"),
-             )
+             
+             radioButtons("data_input_choice", "Select data input:", choices = c("From library" = "library", "Custom" = "custom")),
+             conditionalPanel(
+               condition = "input.data_input_choice == 'library'",
+               
+               column(
+                 3,
+                 selectInput("imu_obj", "Select IMU file:",
+                             names(data),
+                             selected = 1
+                 ),
+                 selectInput("selected_sensor", "Select sensor", choices = "Gyro.X", selected = "Gyro.X"),
+               )
+
+             ),
+             conditionalPanel(
+               condition = "input.data_input_choice == 'custom'",
+               
+                 column(
+                   3,
+                  
+                   
+                   # textInput(inputId="user_specified_separator", label="Specify the field separator character", value = "", width = NULL, placeholder = NULL),
+                   # Input: Select separator ----
+                   radioButtons("user_specified_separator", "Specify the field separator character",
+                                choices = c(Comma = ",",
+                                            Semicolon = ";",
+                                            Tab = "\t"),
+                                selected = ","),
+                   checkboxInput(inputId = "user_specified_header", label="The file contains the names of the variables as its first line (TRUE if checked).", value = FALSE, width = NULL),
+
+                   
+
+                   fileInput("user_defined_txt_file", "Select input file (max 100MB):",
+                             accept = c(
+                               "text/txt",
+                               "text/comma-separated-values,text/plain",
+                               ".txt",
+                               ".imu",
+                               ".csv",
+                               placeholder = "No file selected"
+                             )
+                   ),
+                   span(
+                     "",
+                     div(style = "display:inline-block;",
+                         title = "Specify the column that contains the signal in the provided file. The frequency is fixed to 1.",
+                         icon("info-circle"))),
+                   numericInput(inputId = "user_defined_txt_file_column", label = "Select column number:",
+                                min = 1, max = 10, value = 1)
+
+                 )
+
+               
+             ),
+             
+
         
 
              ),
     tabPanel("GMWM fit",
              plotOutput(outputId = "plot_fit", height = const.FIGURE_PLOT_HEIGHT, width = 1200)
     ),
-    #          column(
-    #            4,
-    #            checkboxGroupInput("model", "Select Model",
-    #                               c(
-    #                                 "Quantization Noise" = "QN",
-    #                                 "White Noise" = "WN",
-    #                                 "Random Walk" = "RW",
-    #                                 "Drift" = "DR",
-    #                                 "Gauss-Markov" = "GM"
-    #                               ),
-    #                               selected = "WN"
-    #            ),
-    #            conditionalPanel(
-    #              condition = "input.model.indexOf('GM')>-1",
-    #              sliderInput("gm_nb", "Number of Gauss-Markov Processes", 1, 5, 2)
-    #            ),
-    #            actionButton("fit3", label = "Fit Model")
-    #          )
-    #          
-    # 
-    #          ),
+
     tabPanel("Summary", verbatimTextOutput(outputId = "summ", placeholder = FALSE)),
     tabPanel(
       "Help",
@@ -173,19 +195,16 @@ ui <- shinyUI(fluidPage(
       uiOutput(outputId = "tabhelpurl"),
       br(), br(),
       fluidRow(
+
+
         column(
           3,
-          plotOutput(outputId = "tabhelpplotlogo_pennstate", height = const.FIGURE_PLOT_HEIGHT_LOGO)
+          plotOutput(outputId = "render_logo_unige", height = const.FIGURE_PLOT_HEIGHT_LOGO)
         ),
         column(
           3,
           plotOutput(outputId = "tabhelpplotlogo_epfl", height = const.FIGURE_PLOT_HEIGHT_LOGO)
         ),
-        column(
-          3,
-          plotOutput(outputId = "render_logo_unige", height = const.FIGURE_PLOT_HEIGHT_LOGO)
-        ),
-        
         
       ),
       fluidRow(
@@ -218,6 +237,9 @@ ui <- shinyUI(fluidPage(
   
   
   conditionalPanel(condition = "input.tabs == 'Wavelet Variance' || input.tabs == 'GMWM fit'",
+                   
+                   
+                   
                    column(
                      4,
                      checkboxGroupInput("model", "Select Model",
@@ -377,8 +399,8 @@ server <- function(input, output, session) {
   # print info logos in the help tab
   output$tabhelpplotlogo_epfl <- renderImage(
     {
-      filename <- normalizePath(file.path("./logo", paste("logo_epfl", ".png", sep = "")))
-      list(src = filename, height = const.FIGURE_PLOT_HEIGHT_LOGO)
+      filename <- normalizePath(file.path("./logo", paste("logo_epfl_3", ".png", sep = "")))
+      list(src = filename, height = "100px")
     },
     deleteFile = FALSE
   )
@@ -399,8 +421,33 @@ server <- function(input, output, session) {
 
   # plot the empirical wavelet variance
   output$plot_wv <- renderPlot({
-    par(mar = c(4, 5, 3, 2))
-    plot(data[[input$imu_obj]][[input$selected_sensor]], legend_position = "bottomleft")
+    
+    
+    if ("library" %in% input$data_input_choice){ 
+      #using library data
+      par(mar = c(4, 5, 3, 2))
+      plot(data[[input$imu_obj]][[input$selected_sensor]], legend_position = "bottomleft")
+    } else{ 
+      #using custom data
+      inFile <- input$user_defined_txt_file
+      if (is.null(inFile)){
+        plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
+        text(.5,.5 , "Please provide a data file", cex=2)
+      }else{
+        my_data = read.csv(inFile$datapath, header = input$user_specified_header, sep = input$user_specified_separator)
+
+        
+        wv_obj = wv::wvar(as.numeric(my_data[, input$user_defined_txt_file_column]))
+        plot(wv_obj, legend_position="bottomleft")
+        }
+      
+
+    }
+
+    
+    
+    
+
   })
 
 
@@ -500,11 +547,20 @@ server <- function(input, output, session) {
       # if (is.null(input$num)) {
       #   input$num <- 10^5
       # }
-
+      
+      if ("library" %in% input$data_input_choice){ 
+        gmwm(model, data[[input$imu_obj]][[input$selected_sensor]], robust = F)
+      }else{
+        inFile <- input$user_defined_txt_file
+        my_data = read.csv(inFile$datapath, header = input$user_specified_header, sep = input$user_specified_separator)
+        wv_obj = wv::wvar(as.numeric(my_data[, input$user_defined_txt_file_column]))
+        gmwm(model, wv_obj , robust = F)
+      }
+     
 
       
 
-      gmwm(model, data[[input$imu_obj]][[input$selected_sensor]], robust = F)
+      
 
       # v$gmwm = gmwm_imu(model, Xt, G = input$num, seed = input$seed, robust = (input$robust=="robust"), freq = v$freq)
       # v$form = v$gmwm
