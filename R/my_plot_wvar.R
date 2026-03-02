@@ -59,10 +59,10 @@ my_plot_wvar = function(wv_obj, legend_position = "bottomright", show_legend = T
     legend(
       legend_position,
       legend = c("Wavelet Variance", "95% CI"),
-      col = c("#00008b", NA),
+      col = c("#00008b", "#ccf1f8"),
       lty = c(1, NA),
       pch = c(16, 15),
-      pt.cex = c(1.3, 2.2),
+      pt.cex = c(1.3, 2.5),
       pt.bg = c(NA, "#ccf1f8"),
       bty = "n"
     )

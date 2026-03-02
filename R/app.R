@@ -5,14 +5,12 @@
 
 
 
-
 library(wv)
 library(gmwm)
 library(scales)
 library(reshape)
 library(shiny)
 library(shinydashboard)
-library(leaflet)
 library(bslib)
 
 
@@ -20,12 +18,9 @@ library(bslib)
 load("data/imudata.RData")
 
 # source
-source("plot_wvar.R")
+source("my_plot_wvar.R")
+source("my_plot_gmwm.R")
 
-# fit = gmwm(WN()+ RW(), input = data[[3]][[1]])
-# fit
-# install gmwm version gmwm2
-# devtools::install_github("https://github.com/SMAC-Group/gmwm@gmwm2", force=T)
 
 
 ################
@@ -115,7 +110,7 @@ sigma2_T <- function(T, f0, B) {
 
 
 smac_url <- a("https://github.com/SMAC-Group/gui4gmwm2", href = "https://github.com/SMAC-Group/gui4gmwm2")
-smac_url_description <- "gui4gmwm GitHub repository:"
+smac_url_description <- "gui4gmwm2 GitHub repository:"
 
 # increses file limit from default-5MB to 100MB
 options(shiny.maxRequestSize = 100 * 1024^2)
@@ -633,7 +628,8 @@ server <- function(input, output, session) {
 
   # plot estimated fit
   output$plot_fit <- renderPlot({
-    plot(fit())
+    # plot(fit())
+    my_plot_gmwm(fit())
   })
   
   
