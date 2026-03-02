@@ -239,47 +239,60 @@ ui <- shinyUI(fluidPage(
     tabPanel("Summary", verbatimTextOutput(outputId = "summ", placeholder = FALSE)),
     tabPanel(
       "Help",
-      h4("Help Tab"),
-      br(),
-      uiOutput(outputId = "tabhelpurl"),
-      br(), br(),
       fluidRow(
-
-
         column(
-          3,
-          plotOutput(outputId = "render_logo_unige", height = const.FIGURE_PLOT_HEIGHT_LOGO)
+          7,
+          bslib::card(
+            bslib::card_header(h4("Help & About")),
+            tags$p("This app provides tools to estimate wavelet variance and fit GMWM models for IMU datasets."),
+            tags$p(uiOutput(outputId = "tabhelpurl")),
+            tags$hr(),
+            tags$p(strong("How to use")),
+            tags$p("1. Select a dataset (library or custom)."),
+            tags$p("2. Choose a sensor and model components."),
+            tags$p("3. Click “Fit Model” to estimate and review results.")
+          )
         ),
         column(
-          3,
-          plotOutput(outputId = "tabhelpplotlogo_epfl", height = const.FIGURE_PLOT_HEIGHT_LOGO)
-        ),
-        
+          5,
+          bslib::card(
+            bslib::card_header(h4("Credits")),
+            tags$p(strong("Application developed by:")),
+            tags$div(
+              tags$a(href="https://stephaneguerrier.com/", "Stéphane Guerrier",  target="_blank"),
+              tags$br(),
+              tags$a(href="https://lionelvoirol.com/", "Lionel Voirol",  target="_blank"),
+              tags$br(),
+              "Philipp Clausen",
+              tags$br(),
+              "Justin Lee",
+              tags$br(),
+              "Roberto Molinari",
+              tags$br(),
+              tags$a(href="https://people.epfl.ch/jan.skaloud", "Jan Skaloud",  target="_blank")
+            )
+          )
+        )
       ),
-      fluidRow(
-        br(),
-        column(
-          3,
-          "Application developped by:",
-          br(),
-          tags$a(href="https://stephaneguerrier.com/", "Stéphane Guerrier",  target="_blank"),
-          br(),
-          tags$a(href="https://github.com/lionelvoirol", "Lionel Voirol",  target="_blank"),
-          br(),
-          "Philipp Clausen",
-          br(),
-          "Justin Lee",
-          br(),
-          "Roberto Molinari",
-          br(),
-          tags$a(href="https://people.epfl.ch/jan.skaloud", "Jan Skaloud",  target="_blank"),
-          
-
-          
-          
-        ),
-        
-       
+      br(),
+      bslib::card(
+        bslib::card_header(h4("Affiliations")),
+        fluidRow(
+          column(
+            6,
+            div(
+              style = "text-align: left;",
+              plotOutput(outputId = "render_logo_unige", height = const.FIGURE_PLOT_HEIGHT_LOGO, width = "100%")
+            )
+          ),
+          column(
+            6,
+            div(
+              style = "text-align: right;",
+              plotOutput(outputId = "tabhelpplotlogo_epfl", height = const.FIGURE_PLOT_HEIGHT_LOGO, width = "100%")
+            )
+          )
+        )
       )
     )
   ),
