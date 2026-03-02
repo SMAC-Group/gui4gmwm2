@@ -1,6 +1,11 @@
 # source("R/plot_wv_and_datasheet.R")
+# this is a specific branch of package gmwm!!!
 # remotes::install_github(repo = "https://github.com/SMAC-Group/gmwm", ref = "gmwm2")
-# remotes::install_github(repo = "https://github.com/SMAC-Group/wv", force = T)
+# remotes::install_github(repo = "https://github.com/SMAC-Group/wv")
+
+
+
+
 library(wv)
 library(gmwm)
 library(scales)
@@ -8,10 +13,14 @@ library(reshape)
 library(shiny)
 library(shinydashboard)
 library(leaflet)
+library(bslib)
 
 
 # load data wavelet
 load("data/imudata.RData")
+
+# source
+source("plot_wvar.R")
 
 # fit = gmwm(WN()+ RW(), input = data[[3]][[1]])
 # fit
@@ -26,8 +35,8 @@ const.RENDER_PLOT_WIDTH <- 1000
 const.RENDER_PLOT_HEIGHT <- 600
 const.RENDER_PLOT_RES <- 100 # default is 72
 
-const.FIGURE_PLOT_HEIGHT <- "600px"
-const.FIGURE_PLOT_HEIGHT_REDUCED <- "400px"
+const.FIGURE_PLOT_HEIGHT <- "60vh"
+const.FIGURE_PLOT_HEIGHT_REDUCED <- "45vh"
 const.FIGURE_PLOT_HEIGHT_LOGO <- "100px"
 
 const.nb_of_digits <- 7
@@ -112,17 +121,57 @@ smac_url_description <- "gui4gmwm GitHub repository:"
 options(shiny.maxRequestSize = 100 * 1024^2)
 
 ui <- shinyUI(fluidPage(
-
+  theme = bs_theme(
+    version = 5,
+    bootswatch = "flatly",
+    base_font = font_google("IBM Plex Sans"),
+    heading_font = font_google("IBM Plex Sans Condensed")
+  ),
   shinyjs::useShinyjs(),
-  tags$style(HTML(".js-irs-0 .irs-single, .js-irs-0 .irs-bar-edge, .js-irs-0 .irs-bar {background: red}")),
-  tags$style(HTML(".js-irs-1 .irs-single, .js-irs-1 .irs-bar-edge, .js-irs-1 .irs-bar {background: green}")),
-  tags$style(type = "text/css", "#summ {background-color: rgba(0,0,200,0.02); color: black; width: 500px; font-size: 14px;}"),
+  tags$style(HTML(".js-irs-0 .irs-single, .js-irs-0 .irs-bar-edge, .js-irs-0 .irs-bar {background: #111111}")),
+  tags$style(HTML(".js-irs-1 .irs-single, .js-irs-1 .irs-bar-edge, .js-irs-1 .irs-bar {background: #333333}")),
+  tags$style(type = "text/css", "
+    body {
+      background: linear-gradient(180deg, #f7f9fb 0%, #eef2f6 100%);
+    }
+    .tab-content {
+      padding-top: 10px;
+    }
+    .well, .card, .panel {
+      border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+    #summ {
+      background-color: #ffffff;
+      color: #0f172a;
+      width: 100%;
+      font-size: 14px;
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .form-control, .selectize-input, .btn {
+      border-radius: 10px;
+    }
+    .nav-tabs .nav-link.active,
+    .nav-pills .nav-link.active {
+      background-color: #111111 !important;
+      border-color: #111111 !important;
+      color: #ffffff !important;
+    }
+    .nav-tabs .nav-link {
+      color: #111111;
+    }
+    .btn-primary {
+      background-color: #111111;
+      border-color: #111111;
+    }
+  "),
   title = "GMWM GUI",
   tabsetPanel(
     id = "tabs",
     tabPanel("Wavelet Variance", plotOutput(outputId = "plot_wv", 
                                             height = const.FIGURE_PLOT_HEIGHT,
-                                            width = 1200),
+                                            width = "100%"),
              
              radioButtons("data_input_choice", "Select data input:", choices = c("From library" = "library", "Custom" = "custom")),
              conditionalPanel(
@@ -184,7 +233,7 @@ ui <- shinyUI(fluidPage(
 
              ),
     tabPanel("GMWM fit",
-             plotOutput(outputId = "plot_fit", height = const.FIGURE_PLOT_HEIGHT, width = 1200)
+             plotOutput(outputId = "plot_fit", height = const.FIGURE_PLOT_HEIGHT, width = "100%")
     ),
 
     tabPanel("Summary", verbatimTextOutput(outputId = "summ", placeholder = FALSE)),
@@ -387,14 +436,14 @@ server <- function(input, output, session) {
   })
 
   # print info logos in the help tab
-  output$tabhelpplotlogo_pennstate <- renderImage(
-    {
-      filename <- normalizePath(file.path("./logo", paste("logo_penn_state", ".png", sep = "")))
-      # list(src = bind(filename, filename), height = const.FIGURE_PLOT_HEIGHT_SUPER_REDUCED)
-      list(src = filename, height = const.FIGURE_PLOT_HEIGHT_LOGO)
-    },
-    deleteFile = FALSE
-  )
+  # output$tabhelpplotlogo_pennstate <- renderImage(
+  #   {
+  #     filename <- normalizePath(file.path("./logo", paste("logo_penn_state", ".png", sep = "")))
+  #     # list(src = bind(filename, filename), height = const.FIGURE_PLOT_HEIGHT_SUPER_REDUCED)
+  #     list(src = filename, height = const.FIGURE_PLOT_HEIGHT_LOGO)
+  #   },
+  #   deleteFile = FALSE
+  # )
 
   # print info logos in the help tab
   output$tabhelpplotlogo_epfl <- renderImage(
@@ -425,8 +474,9 @@ server <- function(input, output, session) {
     
     if ("library" %in% input$data_input_choice){ 
       #using library data
-      par(mar = c(4, 5, 3, 2))
-      plot(data[[input$imu_obj]][[input$selected_sensor]], legend_position = "bottomleft")
+      # par(mar = c(4, 5, 3, 2))
+      my_plot_wvar(data[[input$imu_obj]][[input$selected_sensor]], legend_position = "bottomleft")
+      # plot()
     } else{ 
       #using custom data
       inFile <- input$user_defined_txt_file
@@ -438,7 +488,7 @@ server <- function(input, output, session) {
 
         
         wv_obj = wv::wvar(as.numeric(my_data[, input$user_defined_txt_file_column]))
-        plot(wv_obj, legend_position="bottomleft")
+        my_plot_wvar(wv_obj, legend_position = "bottomleft")
         }
       
 
@@ -549,22 +599,15 @@ server <- function(input, output, session) {
       # }
       
       if ("library" %in% input$data_input_choice){ 
-        gmwm(model, data[[input$imu_obj]][[input$selected_sensor]], robust = F)
+        gmwm::gmwm(model, data[[input$imu_obj]][[input$selected_sensor]], robust = F)
       }else{
         inFile <- input$user_defined_txt_file
         my_data = read.csv(inFile$datapath, header = input$user_specified_header, sep = input$user_specified_separator)
         wv_obj = wv::wvar(as.numeric(my_data[, input$user_defined_txt_file_column]))
-        gmwm(model, wv_obj , robust = F)
+        gmwm::gmwm(model, wv_obj , robust = F)
       }
      
 
-      
-
-      
-
-      # v$gmwm = gmwm_imu(model, Xt, G = input$num, seed = input$seed, robust = (input$robust=="robust"), freq = v$freq)
-      # v$form = v$gmwm
-      # v$first_gmwm = FALSE
     })
 
     # updateNavbarPage(session, "tabs", selected = "GMWM fit")
