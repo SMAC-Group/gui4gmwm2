@@ -248,7 +248,7 @@ ui <- shinyUI(fluidPage(
     # Wavelet variance tab: input selection + plot
     tabPanel("Wavelet Variance", plotOutput(outputId = "plot_wv", 
                                             height = const.FIGURE_PLOT_HEIGHT,
-                                            width = "100%"),
+                                            width = "75%"),
              
              radioButtons("data_input_choice", "Select data input:", choices = c("From library" = "library", "Custom" = "custom")),
              # Sampling frequency (Hz); synced with Summary tab
@@ -322,7 +322,7 @@ ui <- shinyUI(fluidPage(
              ),
     # Model fit visualization tab
     tabPanel("GMWM fit",
-             plotOutput(outputId = "plot_fit", height = const.FIGURE_PLOT_HEIGHT, width = "100%")
+             plotOutput(outputId = "plot_fit", height = const.FIGURE_PLOT_HEIGHT, width = "75%")
     ),
 
     # Summary tab: parameter estimates + KF-transformed parameters
