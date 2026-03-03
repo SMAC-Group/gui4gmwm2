@@ -127,6 +127,47 @@ smac_url_description <- "gui4gmwm2 GitHub repository:"
 # Increase file upload limit from default 5MB to 100MB
 options(shiny.maxRequestSize = 100 * 1024^2)
 
+# Deferred tabs: defined once and injected later.
+# Why: keep initial UI limited to tabs 1 and 4, and avoid any startup flicker
+# from tabs 2/3 by not rendering them at app initialization.
+gmwm_fit_tab <- tabPanel(
+  title = "GMWM fit",
+  value = "gmwm_fit",
+  div(
+    style = "width:75%; margin: 0 auto;",
+    plotOutput(outputId = "plot_fit", height = const.FIGURE_PLOT_HEIGHT, width = "100%")
+  )
+)
+
+summary_tab <- tabPanel(
+  title = "Summary",
+  value = "summary",
+  fluidRow(
+    column(
+      6,
+      bslib::card(
+        bslib::card_header(h4("Estimated parameters")),
+        tags$p(textOutput("summary_obj")),
+        tableOutput(outputId = "summ")
+      )
+    ),
+    column(
+      6,
+      bslib::card(
+        bslib::card_header(h4("Kalman Filter estimated parameters")),
+        numericInput(
+          inputId = "freq_input_summary",
+          label = "Sampling frequency (Hz):",
+          min = 1,
+          value = const.DATASET_FREQ[[names(data)[1]]],
+          step = 1
+        ),
+        tableOutput(outputId = "summ_kf")
+      )
+    )
+  )
+)
+
 ################
 # UI
 # Purpose: Defines all layout, inputs, and outputs for the app.
@@ -247,6 +288,7 @@ ui <- shinyUI(fluidPage(
     id = "tabs",
     # Wavelet variance tab: input selection + plot
     tabPanel("Wavelet Variance",
+             value = "wavelet",
              div(style = "width:75%; margin: 0 auto;",
                  plotOutput(outputId = "plot_wv",
                             height = const.FIGURE_PLOT_HEIGHT,
@@ -319,46 +361,13 @@ ui <- shinyUI(fluidPage(
              ),
              
 
-        
+             
 
              ),
-    # Model fit visualization tab
-    tabPanel("GMWM fit",
-             div(style = "width:75%; margin: 0 auto;",
-                 plotOutput(outputId = "plot_fit", height = const.FIGURE_PLOT_HEIGHT, width = "100%"))
-    ),
-
-    # Summary tab: parameter estimates + KF-transformed parameters
-    tabPanel(
-      "Summary",
-      fluidRow(
-        column(
-          6,
-          bslib::card(
-            bslib::card_header(h4("Estimated parameters")),
-            tags$p(textOutput("summary_obj")),
-            tableOutput(outputId = "summ")
-          )
-        ),
-        column(
-          6,
-          bslib::card(
-            bslib::card_header(h4("Kalman Filter estimated parameters")),
-            numericInput(
-              inputId = "freq_input_summary",
-              label = "Sampling frequency (Hz):",
-              min = 1,
-              value = const.DATASET_FREQ[[names(data)[1]]],
-              step = 1
-            ),
-            tableOutput(outputId = "summ_kf")
-          )
-        )
-      )
-    ),
     # Help & About tab
     tabPanel(
       "Help",
+      value = "help",
       fluidRow(
         column(
           7,
@@ -419,7 +428,7 @@ ui <- shinyUI(fluidPage(
   ),
   
   
-  conditionalPanel(condition = "input.tabs == 'Wavelet Variance' || input.tabs == 'GMWM fit'",
+  conditionalPanel(condition = "input.tabs == 'wavelet' || input.tabs == 'gmwm_fit'",
                    
                    
                    
@@ -712,9 +721,19 @@ server <- function(input, output, session) {
 
   })
   
-  # Navigate to "GMWM fit" tab after fitting
+  # Unlock deferred tabs on first "Fit Model" click, then navigate to fit tab.
+  # tabs_unlocked() prevents duplicate insertion if user clicks multiple times.
+  tabs_unlocked <- reactiveVal(FALSE)
   observeEvent(input$fit3, {
-    updateNavbarPage(session, "tabs", selected = "GMWM fit")
+    if (!tabs_unlocked()) {
+      # Insert 2nd and 3rd tabs right before Help so final order is:
+      # Wavelet Variance -> GMWM fit -> Summary -> Help
+      insertTab(inputId = "tabs", tab = gmwm_fit_tab, target = "help", position = "before", select = FALSE)
+      insertTab(inputId = "tabs", tab = summary_tab, target = "help", position = "before", select = FALSE)
+      tabs_unlocked(TRUE)
+    }
+    # Select by tab value (works with tabsetPanel + value=...).
+    updateTabsetPanel(session, "tabs", selected = "gmwm_fit")
   })
 
   # Plot estimated fit
