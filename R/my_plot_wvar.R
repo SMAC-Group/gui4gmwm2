@@ -4,15 +4,17 @@
 
 
 my_plot_wvar = function(wv_obj, legend_position = "bottomright", show_legend = TRUE){
-  # wv_obj = data[[1]][[1]]
+  # wv_obj = data[[2]][[1]]
   # str(wv_obj)
 
   
-  
-  if(class(wv_obj) != "wvar"){
+  if(!class(wv_obj) %in% c("wvar", "imu_wvar")){
     stop("wv_object must be of class wvar")
   }
   
+
+    
+    
   # get ymin and amax for y axis
   ymin = min(c(wv_obj$variance, wv_obj$ci_low))
   ymax = max(c(wv_obj$variance, wv_obj$ci_high)) 

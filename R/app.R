@@ -160,6 +160,13 @@ ui <- shinyUI(fluidPage(
       background-color: #111111;
       border-color: #111111;
     }
+    .card .table {
+      margin-top: 10px;
+      width: 100%;
+    }
+    .card .table th, .card .table td {
+      vertical-align: middle;
+    }
   "),
   title = "GMWM GUI",
   tabsetPanel(
@@ -231,7 +238,27 @@ ui <- shinyUI(fluidPage(
              plotOutput(outputId = "plot_fit", height = const.FIGURE_PLOT_HEIGHT, width = "100%")
     ),
 
-    tabPanel("Summary", verbatimTextOutput(outputId = "summ", placeholder = FALSE)),
+    tabPanel(
+      "Summary",
+      fluidRow(
+        column(
+          6,
+          bslib::card(
+            bslib::card_header(h4("Model Summary")),
+            tags$p(textOutput("summary_obj")),
+            tableOutput(outputId = "summ")
+          )
+        ),
+        column(
+          6,
+          bslib::card(
+            bslib::card_header(h4("Kalman Filter Parameters")),
+            tags$p("Placeholder for transformed parameters (coming soon)."),
+            tableOutput(outputId = "summ_kf")
+          )
+        )
+      )
+    ),
     tabPanel(
       "Help",
       fluidRow(
@@ -634,13 +661,30 @@ server <- function(input, output, session) {
   
   
   # produce summary
-    output$summ <- renderPrint({
-      gmwm_fit = fit()
-      
-      cat("Objective Function: ", gmwm_fit$obj.fun, "\n" )
-      gmwm_fit$estimate
-      
-    })
+  output$summary_obj <- renderText({
+    gmwm_fit <- fit()
+    paste("Objective Function:", formatC(gmwm_fit$obj.fun, digits = 4, format = "e"))
+  })
+
+  output$summ <- renderTable({
+    gmwm_fit <- fit()
+    est <- gmwm_fit$estimate
+    df <- as.data.frame(est, stringsAsFactors = FALSE)
+    df$Process <- rownames(df)
+    rownames(df) <- NULL
+    df <- df[, c("Process", setdiff(names(df), "Process"))]
+    num_cols <- vapply(df, is.numeric, logical(1))
+    df[num_cols] <- lapply(df[num_cols], function(x) format(x, scientific = TRUE, digits = const.nb_of_digits))
+    df
+  }, striped = TRUE, bordered = TRUE, spacing = "s")
+
+  output$summ_kf <- renderTable({
+    data.frame(
+      Parameter = character(),
+      Value = character(),
+      stringsAsFactors = FALSE
+    )
+  }, striped = TRUE, bordered = TRUE, spacing = "s")
       
     #   # fit = gmwm(model = WN() + RW() , data[[1]][[1]])
     #   # fit$estimate
