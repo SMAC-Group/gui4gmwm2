@@ -301,6 +301,8 @@ ui <- shinyUI(fluidPage(
                                placeholder = "No file selected"
                              )
                    ),
+                   tags$small("Preview (first 5 rows) based on selected separator and header."),
+                   tableOutput(outputId = "file_preview"),
                    span(
                      "",
                      div(style = "display:inline-block;",
@@ -392,7 +394,7 @@ ui <- shinyUI(fluidPage(
               tags$br(),
               "Justin Lee",
               tags$br(),
-              "Roberto Molinari",
+              tags$a(href="https://robertomolinari.github.io/", "Roberto Molinari",  target="_blank"),
               tags$br(),
               tags$a(href="https://people.epfl.ch/jan.skaloud", "Jan Skaloud",  target="_blank")
             )
@@ -459,9 +461,7 @@ server <- function(input, output, session) {
     {
       # Prefer the specific EPFL variant; fall back if missing
       filename <- file.path("./logo", paste("logo_epfl_6", ".png", sep = ""))
-      if (!file.exists(filename)) {
-        filename <- file.path("./logo", paste("logo_epfl", ".png", sep = ""))
-      }
+ 
       filename <- normalizePath(filename)
       list(src = filename, height = "80px")
     },
@@ -510,12 +510,54 @@ server <- function(input, output, session) {
         plot(c(0, 1), c(0, 1), ann = F, bty = 'n', type = 'n', xaxt = 'n', yaxt = 'n')
         text(.5,.5 , "Please provide a data file", cex=2)
       }else{
-        my_data = read.csv(inFile$datapath, header = input$user_specified_header, sep = input$user_specified_separator)
+        # Robust file import with error handling (e.g., wrong separator)
+        my_data <- tryCatch(
+          read.csv(inFile$datapath, header = input$user_specified_header, sep = input$user_specified_separator),
+          error = function(e) {
+            plot(c(0, 1), c(0, 1), ann = FALSE, bty = "n", type = "n", xaxt = "n", yaxt = "n")
+            text(0.5, 0.5, paste("File read error:", e$message), cex = 1)
+            return(NULL)
+          }
+        )
+        if (is.null(my_data)) {
+          return()
+        }
 
-        
+        # Extract and validate selected column
+        raw_col <- my_data[, input$user_defined_txt_file_column]
+        x <- suppressWarnings(as.numeric(raw_col))
+        if (!any(is.finite(x))) {
+          plot(c(0, 1), c(0, 1), ann = FALSE, bty = "n", type = "n", xaxt = "n", yaxt = "n")
+          text(0.5, 0.5, "Selected column is not numeric.\nCheck separator, header, and column index.", cex = 1)
+          return()
+        }
+        x <- x[is.finite(x)]
+        if (length(x) < 2) {
+          plot(c(0, 1), c(0, 1), ann = FALSE, bty = "n", type = "n", xaxt = "n", yaxt = "n")
+          text(0.5, 0.5, "Not enough numeric data to compute wavelet variance.", cex = 1)
+          return()
+        }
+
         # Compute wavelet variance from selected column
-        wv_obj = wv::wvar(as.numeric(my_data[, input$user_defined_txt_file_column]))
-        my_plot_wvar(wv_obj, legend_position = "bottomleft")
+        wv_obj <- tryCatch(
+          wv::wvar(x),
+          error = function(e) {
+            plot(c(0, 1), c(0, 1), ann = FALSE, bty = "n", type = "n", xaxt = "n", yaxt = "n")
+            text(0.5, 0.5, paste("Wavelet variance error:", e$message), cex = 1)
+            return(NULL)
+          }
+        )
+        if (is.null(wv_obj)) {
+          return()
+        }
+        tryCatch(
+          my_plot_wvar(wv_obj, legend_position = "bottomleft"),
+          error = function(e) {
+            plot(c(0, 1), c(0, 1), ann = FALSE, bty = "n", type = "n", xaxt = "n", yaxt = "n")
+            text(0.5, 0.5, paste("Plot error:", e$message), cex = 1)
+            return(NULL)
+          }
+        )
         }
       
 
@@ -526,6 +568,28 @@ server <- function(input, output, session) {
     
 
   })
+
+  # === CUSTOM FILE PREVIEW ===
+  # Show a small preview table to help users validate separator/header choices
+  output$file_preview <- renderTable({
+    if (!"custom" %in% input$data_input_choice) {
+      return(NULL)
+    }
+    inFile <- input$user_defined_txt_file
+    if (is.null(inFile)) {
+      return(NULL)
+    }
+    df <- tryCatch(
+      read.csv(inFile$datapath, header = input$user_specified_header, sep = input$user_specified_separator),
+      error = function(e) {
+        return(NULL)
+      }
+    )
+    if (is.null(df)) {
+      return(NULL)
+    }
+    head(df, 5)
+  }, striped = FALSE, bordered = TRUE, spacing = "s")
 
 
 
@@ -603,8 +667,37 @@ server <- function(input, output, session) {
         gmwm::gmwm(model, data[[input$imu_obj]][[input$selected_sensor]], robust = F)
       }else{
         inFile <- input$user_defined_txt_file
-        my_data = read.csv(inFile$datapath, header = input$user_specified_header, sep = input$user_specified_separator)
-        wv_obj = wv::wvar(as.numeric(my_data[, input$user_defined_txt_file_column]))
+        my_data <- tryCatch(
+          read.csv(inFile$datapath, header = input$user_specified_header, sep = input$user_specified_separator),
+          error = function(e) {
+            showNotification(paste("File read error:", e$message), type = "error", duration = 6)
+            return(NULL)
+          }
+        )
+        if (is.null(my_data)) {
+          return(NULL)
+        }
+        raw_col <- my_data[, input$user_defined_txt_file_column]
+        x <- suppressWarnings(as.numeric(raw_col))
+        if (!any(is.finite(x))) {
+          showNotification("Selected column is not numeric. Check separator, header, and column index.", type = "error", duration = 6)
+          return(NULL)
+        }
+        x <- x[is.finite(x)]
+        if (length(x) < 2) {
+          showNotification("Not enough numeric data to compute wavelet variance.", type = "error", duration = 6)
+          return(NULL)
+        }
+        wv_obj <- tryCatch(
+          wv::wvar(x),
+          error = function(e) {
+            showNotification(paste("Wavelet variance error:", e$message), type = "error", duration = 6)
+            return(NULL)
+          }
+        )
+        if (is.null(wv_obj)) {
+          return(NULL)
+        }
         gmwm::gmwm(model, wv_obj , robust = F)
       }
      
