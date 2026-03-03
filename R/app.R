@@ -6,6 +6,7 @@
 
 
 library(wv)
+library(ggplot2)
 library(gmwm)
 library(scales)
 library(reshape)
@@ -730,8 +731,7 @@ server <- function(input, output, session) {
     freq <- freq_selected()
     df <- transform_parameters(gmwm_fit, freq)
 
-    # Clean column names and format numeric values
-    names(df) <- gsub("\\.", " ", names(df))
+    # Format numeric values
     num_cols <- vapply(df, is.numeric, logical(1))
     df[num_cols] <- lapply(df[num_cols], function(x) format(x, scientific = TRUE, digits = const.nb_of_digits))
     df

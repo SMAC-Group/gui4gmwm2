@@ -1,17 +1,4 @@
-# library(simts)
-# mod = WN(sigma2 = 1)+GM(beta = .01, sigma2_gm = 1)
-# x = simts::gen_gts(mod, n=10000)
-# emp_wv = wvar(x)
-# plot(emp_wv)
-# fit = gmwm(model = RW()+WN(), emp_wv)
-# fit
-# 
-# # function get frequency
-# get_frequency = function(){
-#   
-# }
-# 
-# str(fit$model)
+
 
 transform_parameters = function(gmwm_fit, frequency){
   # return a table with the name of the process and the transformed parameters
@@ -85,9 +72,31 @@ transform_parameters = function(gmwm_fit, frequency){
     }
 
   }
+  # clean names
+  names(df_transformed_parameters) <- gsub("\\.", " ", names(df_transformed_parameters))
   return(df_transformed_parameters)
 }
 
+
+
+
+
+
+# library(simts)
+# mod = WN(sigma2 = 1)+GM(beta = .01, sigma2_gm = 1)
+# x = simts::gen_gts(mod, n=10000)
+# emp_wv = wvar(x)
+# plot(emp_wv)
+# fit = gmwm(model = RW()+WN(), emp_wv)
+# fit
+# 
+# # function get frequency
+# get_frequency = function(){
+#   
+# }
+# 
+# str(fit$model)
+# transform_parameters(fit, frequency = 100)
 
 
 
