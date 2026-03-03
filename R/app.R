@@ -246,9 +246,11 @@ ui <- shinyUI(fluidPage(
   tabsetPanel(
     id = "tabs",
     # Wavelet variance tab: input selection + plot
-    tabPanel("Wavelet Variance", plotOutput(outputId = "plot_wv", 
-                                            height = const.FIGURE_PLOT_HEIGHT,
-                                            width = "75%"),
+    tabPanel("Wavelet Variance",
+             div(style = "width:75%; margin: 0 auto;",
+                 plotOutput(outputId = "plot_wv",
+                            height = const.FIGURE_PLOT_HEIGHT,
+                            width = "100%")),
              
              radioButtons("data_input_choice", "Select data input:", choices = c("From library" = "library", "Custom" = "custom")),
              # Sampling frequency (Hz); synced with Summary tab
@@ -322,7 +324,8 @@ ui <- shinyUI(fluidPage(
              ),
     # Model fit visualization tab
     tabPanel("GMWM fit",
-             plotOutput(outputId = "plot_fit", height = const.FIGURE_PLOT_HEIGHT, width = "75%")
+             div(style = "width:75%; margin: 0 auto;",
+                 plotOutput(outputId = "plot_fit", height = const.FIGURE_PLOT_HEIGHT, width = "100%"))
     ),
 
     # Summary tab: parameter estimates + KF-transformed parameters
@@ -370,7 +373,7 @@ ui <- shinyUI(fluidPage(
                 class = "github-link",
                 href = "https://github.com/SMAC-Group/gui4gmwm2",
                 target = "_blank",
-                "gui4gmwm2"
+                "SMAC-Group/gui4gmwm2"
               )
             ),
             tags$hr(),
@@ -402,13 +405,15 @@ ui <- shinyUI(fluidPage(
         )
       ),
       br(),
-      bslib::card(
-        bslib::card_header(h4("Affiliations")),
-        tags$div(
-          class = "affiliation-logos",
-          imageOutput(outputId = "render_logo_unige"),
-          imageOutput(outputId = "tabhelpplotlogo_epfl")
-        )
+      div(style = "width:90%; margin: 0 auto;",
+          bslib::card(
+            bslib::card_header(h4("Affiliations")),
+            tags$div(
+              class = "affiliation-logos",
+              imageOutput(outputId = "render_logo_unige"),
+              imageOutput(outputId = "tabhelpplotlogo_epfl")
+            )
+          )
       )
     )
   ),

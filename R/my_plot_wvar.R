@@ -4,9 +4,16 @@
 
 
 my_plot_wvar = function(wv_obj, legend_position = "bottomright", show_legend = TRUE){
+  
+  #-----------------------------------------
+  # load("~/github_repo/gui4gmwm2/R/data/imudata.RData")
   # wv_obj = data[[2]][[1]]
-  # str(wv_obj)
+  # legend_position = "bottomright"
+  # show_legend = TRUE
+  
+  #-----------------------------------------
 
+  par(mar = c(5,5,4,1))
   
   if(!class(wv_obj) %in% c("wvar", "imu_wvar")){
     stop("wv_object must be of class wvar")
@@ -26,13 +33,17 @@ my_plot_wvar = function(wv_obj, legend_position = "bottomright", show_legend = T
   plot(x =wv_obj$scales, y=wv_obj$variance, log="xy", ylab="",
        ylim=c(ymin, ymax),
        xlab="", main="", type="l",xaxt="n", yaxt ="n")
-  mtext("Wavelet Variance", side = 2, line = 3)
-  mtext("Scales", side = 1, line = 2.5)
+  
+  
+  cex_lab =1.5
+  mtext("Wavelet Variance", side = 2, line = 3.3, cex=cex_lab)
+  mtext("Scales", side = 1, line = 3.3, cex=cex_lab)
   
 
   
   yticks <- 10^(k_min:k_max)
-  axis(2, at = yticks,    labels = parse(text = paste0("10^", k_min:k_max)), las = 1)
+  cex_axis_ticks = 1.2
+  axis(2, at = yticks,    labels = parse(text = paste0("10^", k_min:k_max)), las = 1, cex.axis= cex_axis_ticks)
   
   # for x axis we can use the scales
   # get the scale in power of 2
@@ -45,14 +56,22 @@ my_plot_wvar = function(wv_obj, legend_position = "bottomright", show_legend = T
   xticks <- 2^(j_min:j_max)
   axis(1,
        at = xticks,
-       labels = parse(text = paste0("2^", j_min:j_max)))
+       labels = parse(text = paste0("2^", j_min:j_max)), cex.axis= cex_axis_ticks)
 
   # add polygon
   polygon(c(wv_obj$scales, rev(wv_obj$scales)),
           c(wv_obj$ci_low, rev(wv_obj$ci_high)),
           col = "#ccf1f8", border = NA)
   
-  grid( col="grey80", lty=2)
+  for(i in yticks){
+    abline(h = i, col = "grey80", lty = 2)
+  }
+  for(j in xticks){
+    abline(v = j, col = "grey80", lty = 2)
+  }
+  
+  
+  # grid( col="grey80", lty=2)
 
   lines(x = wv_obj$scales, y = wv_obj$variance, col="#00008b")
   points(x = wv_obj$scales, y = wv_obj$variance, col="#00008b", pch=16, cex=1.3)
@@ -69,8 +88,8 @@ my_plot_wvar = function(wv_obj, legend_position = "bottomright", show_legend = T
       bty = "n"
     )
   }
-
-  mtext(side=3, "Empirical Haar Wavelet Variance", line=1)
+  cex_title = 1.6
+  mtext(side=3, "Empirical Haar Wavelet Variance", line=1, cex=cex_title)
   box()
 }
 

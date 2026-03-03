@@ -18,26 +18,15 @@ get_plot_colors <- function(n) {
 
 my_plot_gmwm = function(gmwm_fit, legend_position = "bottomleft", show_legend = TRUE){
   
-  
+  par(mar = c(5,5,4,1))
   
   #-----------
-  # library(simts)
-  # library(gmwm)
- 
-  # fit1 = gmwm::gmwm(model = WN() ,  data[[1]][[1]])
-  # 
-  # str(data[[1]][[1]])
-  # str( wvar(rnorm(1000)))
-  # fit1 = gmwm::gmwm(model = WN() , )
-
-  # gmwm:::gmwm(model=WN(), input = data[[1]][[1]])
   
-  # gmwm::gmwm(model = WN())
-  # fit1$estimate
-  # fit2 = gmwm::gmwm(model = WN()+GM(), data[[1]][[1]], freq=1)
-  # fit2$estimate
-  # gmwm_fit = fit1
-  #-------------
+  # load("~/github_repo/gui4gmwm2/R/data/imudata.RData")
+  # gmwm_fit = gmwm::gmwm(model = WN()+ RW(), input = data[[2]][[1]] )
+  # legend_position = "bottomleft"
+  # show_legend = TRUE
+  # #-------------
   
   
   
@@ -58,13 +47,15 @@ my_plot_gmwm = function(gmwm_fit, legend_position = "bottomleft", show_legend = 
   plot(x =gmwm_fit$wv$scales, y=gmwm_fit$wv$variance, log="xy", ylab="",
        ylim=c(ymin, ymax),
        xlab="", main="", type="l",xaxt="n", yaxt ="n")
-  mtext("Wavelet Variance", side = 2, line = 3)
-  mtext("Scales", side = 1, line = 2.5)
-  
+  cex_lab =1.5
+  mtext("Wavelet Variance", side = 2, line = 3.3, cex=cex_lab)
+  mtext("Scales", side = 1, line = 3.3, cex=cex_lab)
   
   
   yticks <- 10^(k_min:k_max)
-  axis(2, at = yticks,    labels = parse(text = paste0("10^", k_min:k_max)), las = 1)
+  cex_axis_ticks = 1.2
+  axis(2, at = yticks,    
+       labels = parse(text = paste0("10^", k_min:k_max)), las = 1, cex.axis =cex_axis_ticks) 
   
   # for x axis we can use the scales
   # get the scale in power of 2
@@ -77,21 +68,27 @@ my_plot_gmwm = function(gmwm_fit, legend_position = "bottomleft", show_legend = 
   xticks <- 2^(j_min:j_max)
   axis(1,
        at = xticks,
-       labels = parse(text = paste0("2^", j_min:j_max)))
+       labels = parse(text = paste0("2^", j_min:j_max)), cex.axis =cex_axis_ticks)
   
   # add polygon
   polygon(c(gmwm_fit$wv$scales, rev(gmwm_fit$wv$scales)),
           c(gmwm_fit$wv$ci_low, rev(gmwm_fit$wv$ci_high)),
           col = "#ccf1f8", border = NA)
   
-  grid( col="grey80", lty=2)
+  for(i in yticks){
+    abline(h = i, col = "grey80", lty = 2)
+  }
+  for(j in xticks){
+    abline(v = j, col = "grey80", lty = 2)
+  }
+  
   
   lines(x = gmwm_fit$wv$scales, y = gmwm_fit$wv$variance, col="#00008b")
   points(x = gmwm_fit$wv$scales, y = gmwm_fit$wv$variance, col="#00008b", pch=16, cex=1.3)
   
 
-  
-  mtext(side=3, "Haar Wavelet Variance Representation", line=1)
+  cex_title = 1.6
+  mtext(side=3, "Haar Wavelet Variance Representation", line=1, cex = cex_title)
   box()
   
   
