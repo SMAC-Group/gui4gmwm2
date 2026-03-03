@@ -38,9 +38,9 @@ transform_parameters = function(gmwm_fit, frequency){
   
   # create table
   df_transformed_parameters = data.frame(
-    model = NA,
-    parameter = NA,
-    transformed_parameter =NA 
+    "Model" = NA,
+    "Parameter" = NA,
+    "Estimated transformed parameters" = NA 
   )
   
   th_param = 1
