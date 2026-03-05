@@ -1,6 +1,6 @@
 # gui4gmwm2
 
-Interactive Shiny app to estimate wavelet variance and fit GMWM models for IMU datasets. It supports both bundled datasets and custom uploads, and provides estimated parameters plus Kalman filter–ready estimated parameters.
+Interactive Shiny app to estimate wavelet variance and fit composite stochastic models on Inertial Measurement Unit time series using the the Generalized Method of Wavelet Moments. It supports both bundled datasets and custom uploads, and provides estimated parameters plus Kalman filter–ready estimated parameters.
 
 ## Live App
 Application hosted [here](https://data-analytics-lab.shinyapps.io/gui4gmwm2/).
