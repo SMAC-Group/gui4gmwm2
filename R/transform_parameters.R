@@ -1,78 +1,143 @@
 
 
 transform_parameters = function(gmwm_fit, frequency){
-  # return a table with the name of the process and the transformed parameters
+  
   
   
   
   
   # frequency given in Hertz
-  #---------------------------------------------
-  # gmwm_fit = fit
+    #---------------------------------------------
+  # load("~/github_repo/gui4gmwm2/R/data/imudata.RData")
+  # library(simts)
+  # gmwm_fit = gmwm::gmwm(model = WN()+ RW(), input = data[[1]][[1]] )
   # frequency = 100
-  #-----------------------------------------------
+  # #--------------------------
   
   
   
+  
+  # return a table with the name of the process and transformed parameters
   if (!inherits(gmwm_fit, "gmwm")) {
     stop("model must be of class gmwm")
   }
-  
-  # take a gmwm fit, transform parameters for use in extended kalman filter
-  number_models = length(gmwm_fit$model$desc)
-  number_of_total_parameters = length(gmwm_fit$estimate)
-  number_of_parameters_for_each_model = sapply(gmwm_fit$model$obj.desc, length)
-  
-  # create table
-  df_transformed_parameters = data.frame(
-    "Model" = NA,
-    "Parameter" = NA,
-    "Estimated transformed parameters" = NA 
-  )
-  
-  th_param = 1
-  for(i in seq(number_models)){
 
-    # get model name
+  number_models = length(gmwm_fit$model$desc)
+  rows = list()
+  th_param = 1
+
+  for(i in seq(number_models)){
     model_name = gmwm_fit$model$desc[i]
-    
-    
+
     if(model_name == "WN"){
       sigma2_trans = gmwm_fit$estimate[th_param] / frequency
-      # append in df
-      df_transformed_parameters[th_param,] = c(model_name, "SIGMA2", sigma2_trans)
+      rows[[length(rows) + 1]] = data.frame(
+        "Model" = model_name,
+        "Parameter" = "\\(\\sqrt{q}\\)",
+        "Estimated transformed parameters" = sqrt(sigma2_trans),
+        # MathJax/LaTeX unit example for White Noise
+        "Units" = "\\(\\frac{\\diamond}{\\sqrt{\\mathrm{Hz}}} \\)",
+        stringsAsFactors = FALSE
+      )
       th_param = th_param + 1
     }else if(model_name == "RW"){
       gamma_2_trans = gmwm_fit$estimate[th_param] * frequency
-      # append
-      df_transformed_parameters[th_param,] = c(model_name, "GAMMA2", gamma_2_trans)
+      rows[[length(rows) + 1]] = data.frame(
+        "Model" = model_name,
+        "Parameter" ="\\(\\sqrt{q}\\)",
+        "Estimated transformed parameters" = sqrt(gamma_2_trans),
+        "Units" = "\\(\\frac{\\diamond}{s \\sqrt{\\mathrm{Hz}}} \\)",
+        stringsAsFactors = FALSE
+      )
       th_param = th_param + 1
     }else if(model_name == "GM"){
       # transform back to AR1 parameters with frequency of 1
+      
+      
+      
+      # double check with simulation that the transformation is correct
+      # frequency <- 100
+      # delta_t <- 1 / frequency
+      # 
+      # beta <- 10
+      # q <- 2
+      # 
+      # # AR(1) parameters implied by continuous GM at delta_t
+      # phi <- exp(-beta * delta_t)
+      # sigma2 <- (q / (2 * beta)) * (1 - exp(-2 * beta * delta_t))
+      # 
+      # n=10000
+      # set.seed(123 )
+      # x <- simts::gen_gts(AR1(phi = phi, sigma2 = sigma2), n = n)
+      # wv_obj <- wv::wvar(x)
+      # fit <- gmwm::gmwm(model = AR1(phi = phi, sigma2 = sigma2), input = wv_obj)
+      # phihat = fit$estimate[1]
+      # sigma2hat = fit$estimate[2]
+      # 
+      # 
+      # 
+      # betahat <- -log(phihat) * frequency
+      # psdhad <- 2 * betahat * sigma2hat / (1 - exp(-2 * betahat / frequency))
+      # 
+      # 
+      # 
+      
+      
+      
+      
       gm_beta <- gmwm_fit$estimate[th_param]
       gm_psd <- gmwm_fit$estimate[th_param + 1]
-      
+
       phi <- exp(-gm_beta / 1)
       sigma2 <- gm_psd / gm_beta / 2 * (1 - exp(-2 * gm_beta / 1))
-      
+
       # transform now phi and sigma2 of AR1 to GM parameters with frequency
       beta <- -log(phi) * frequency
       psd <- 2 * beta * sigma2 / (1 - exp(-2 * beta / frequency))
       
-      # append
-      df_transformed_parameters[th_param,] = c(model_name, "BETA", beta)
-      df_transformed_parameters[th_param + 1,] = c(model_name, "SIGMA2_GM", psd)
+
+
+      rows[[length(rows) + 1]] = data.frame(
+        "Model" = model_name,
+        "Parameter" = "\\(\\frac{1}{\\beta} \\)",
+        "Estimated transformed parameters" =1/beta ,
+        "Units" = "s",
+        stringsAsFactors = FALSE
+      )
+      rows[[length(rows) + 1]] = data.frame(
+        "Model" = model_name,
+        "Parameter" = "\\(\\sqrt{q} \\)",
+        "Estimated transformed parameters" = sqrt(psd),
+        "Units" = "\\(\\frac{\\diamond}{s \\sqrt{\\mathrm{Hz}}} \\)",
+        stringsAsFactors = FALSE
+      )
       th_param = th_param + 2
     }else if(model_name == "QN"){
-      df_transformed_parameters[th_param,] = c(model_name, "Q2", 0)
+      q2_hat = gmwm_fit$estimate[th_param] 
+      rows[[length(rows) + 1]] = data.frame(
+        "Model" = model_name,
+        "Parameter" = "\\(Q^2\\)",
+        "Estimated transformed parameters" = q2_hat,
+        "Units" = "\\(\\diamond^2\\)",
+        stringsAsFactors = FALSE
+      )
       th_param = th_param + 1
     }else if(model_name == "DR"){
-      df_transformed_parameters[th_param,] = c(model_name, "OMEGA", 0)
+      mu_hat <- gmwm_fit$estimate[th_param]
+      omega_hat = mu_hat * frequency
+      
+      rows[[length(rows) + 1]] = data.frame(
+        "Model" = model_name,
+        "Parameter" = "\\(\\omega\\)",
+        "Estimated transformed parameters" = omega_hat,
+        "Units" =  "\\(\\frac{\\diamond}{s} \\)",
+        stringsAsFactors = FALSE
+      )
       th_param = th_param + 1
     }
-
   }
-  # clean names
+
+  df_transformed_parameters = do.call(rbind, rows)
   names(df_transformed_parameters) <- gsub("\\.", " ", names(df_transformed_parameters))
   return(df_transformed_parameters)
 }
@@ -97,7 +162,3 @@ transform_parameters = function(gmwm_fit, frequency){
 # 
 # str(fit$model)
 # transform_parameters(fit, frequency = 100)
-
-
-
-

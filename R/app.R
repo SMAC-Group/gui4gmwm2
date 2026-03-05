@@ -118,12 +118,6 @@ VCi <- Vectorize(Ci, c("x"))
 sigma2_T <- function(T, f0, B) {
   2 * B * B / pi * (log(2) - ((sin(pi * f0 * T))^3) / (2 * (pi * f0 * T)^2) * (sin(pi * f0 * T) + 4 * pi * f0 * T * cos(pi * f0 * T)) + VCi(2 * pi * f0 * T) - VCi(4 * pi * f0 * T))
 }
-
-
-
-smac_url <- a("https://github.com/SMAC-Group/gui4gmwm2", href = "https://github.com/SMAC-Group/gui4gmwm2")
-smac_url_description <- "gui4gmwm2 GitHub repository:"
-
 # Increase file upload limit from default 5MB to 100MB
 options(shiny.maxRequestSize = 100 * 1024^2)
 
@@ -142,13 +136,25 @@ gmwm_fit_tab <- tabPanel(
 summary_tab <- tabPanel(
   title = "Summary",
   value = "summary",
+  tags$p(
+    class = "text-muted",
+    style = "margin-bottom: 10px;",
+    "For more detail on the parametrization, see the ",
+    actionLink("go_details_from_summary", "Details tab"),
+    "."
+  ),
   fluidRow(
     column(
       6,
       bslib::card(
         bslib::card_header(h4("Estimated parameters")),
+        tags$p(
+          class = "text-muted",
+          style = "margin-top: 6px; margin-bottom: 10px;",
+          tags$small("Assuming a sampling frequency of 1.")
+        ),
         tags$p(textOutput("summary_obj")),
-        tableOutput(outputId = "summ")
+        uiOutput(outputId = "summ")
       )
     ),
     column(
@@ -162,7 +168,245 @@ summary_tab <- tabPanel(
           value = const.DATASET_FREQ[[names(data)[1]]],
           step = 1
         ),
-        tableOutput(outputId = "summ_kf")
+        uiOutput(outputId = "summ_kf")
+      )
+    )
+  )
+)
+
+details_tab <- tabPanel(
+  title = "Details",
+  value = "details",
+  fluidRow(
+    column(
+      12,
+      bslib::card(
+        bslib::card_header(h4("Model Components and Process Details")),
+        tags$p("These are the stochastic processes available in the model selection panel."),
+        tags$ul(
+      
+          tags$li(strong("WN - White Noise"), ": independent sample-to-sample random noise."),
+          tags$li(strong("RW - Random Walk"), ": integrated white noise with long-term growth."),
+          tags$li(strong("GM - Gauss-Markov"), ": correlated process with exponential memory."),
+          tags$li(strong("DR - Drift"), ": slowly varying deterministic trend component."),
+          tags$li(strong("QN - Quantization Noise"), ": high-frequency measurement resolution noise.")
+        )
+      )
+    )
+  ),
+  br(),
+  fluidRow(
+    column(
+      12,
+      bslib::card(
+        bslib::card_header(h4("White Noise (WN)")),
+        withMathJax(
+          
+          tags$p(strong("1) Continuous-time model")),
+          tags$p("$$x(t) = w(t)$$"),
+          tags$p("$$\\mathbb{E}[w(t)] = 0, \\qquad 
+            \\mathbb{E}[w(t)w(s)] = q\\,\\delta(t-s)$$"),
+          tags$p("where:"),
+          tags$ul(
+            tags$li("\\(q\\): continuous-time noise intensity (power spectral density)."),
+            tags$li("\\(\\delta(\\cdot)\\): Dirac delta function."),
+            tags$li("\\(t,s\\): time instants.")
+          ),
+          
+          tags$p(strong("2) Sampling at frequency \\(f\\)")),
+          tags$p("$$t_k = k\\Delta t, \\qquad \\Delta t = \\frac{1}{f}$$"),
+          tags$p("We define the discrete-time sample at instant \\(t_k\\) as:"),
+          tags$p("$$x_k := x_{t_k} = w(t_k).$$"),
+          
+          tags$p("Using the covariance definition of white noise, the variance of the sampled process is"),
+          tags$p("$$\\mathrm{Var}(x_k) = \\frac{1}{\\Delta t^2}
+      \\int_{t_k}^{t_k+\\Delta t}\\int_{t_k}^{t_k+\\Delta t}
+      q\\,\\delta(t-s)\\,dt\\,ds
+      = \\frac{q}{\\Delta t}. $$"),
+          
+          tags$p("Therefore the sampled process is"),
+          tags$p("$$x_k \\sim \\mathcal{N}(0,\\sigma^2), \\qquad 
+            \\sigma^2 = \\frac{q}{\\Delta t} = q f.$$")
+          ,
+          
+          tags$p(strong("3) Parameter conversion")),
+          tags$ul(
+            tags$li(strong("Estimated parameter:"), " \\(\\sigma^2\\) (discrete-time variance)."),
+            tags$li(strong("Continuous intensity:"), " \\(q = \\sigma^2\\Delta t = \\sigma^2/f\\)."),
+            tags$li(strong("Returned WN parameter in the KF table:"), " \\(\\sqrt{q}\\).")
+          ),
+          
+          tags$p("Using \\([\\cdot]\\) to denote the units of a quantity, and \\(\\diamond\\) to denote the base unit of the signal."),
+          tags$p("Examples: for a gyroscope, \\(\\diamond\\) can be \\(\\frac{\\mathrm{deg}}{\\mathrm{s}}\\) or \\(\\frac{\\mathrm{rad}}{\\mathrm{s}}\\); for an accelerometer, \\(\\diamond\\) can be \\(\\frac{\\mathrm{mm}}{\\mathrm{s}}\\) or \\(\\frac{\\mathrm{m}}{\\mathrm{s}^2}\\)."),
+          
+          tags$p("Units: if \\([x] = \\diamond\\), then"),
+          tags$p("$$[q] = \\frac{\\diamond^2}{\\mathrm{Hz}}$$"),
+          tags$p("and therefore"),
+          tags$p("$$\\left[\\sqrt{q}\\right] = \\frac{\\diamond}{\\sqrt{\\mathrm{Hz}}}. $$")
+          
+        )
+      ),
+      bslib::card(
+        bslib::card_header(h4("Random Walk (RW)")),
+        withMathJax(
+          
+          tags$p(strong("1) Continuous-time model")),
+          tags$p("A continuous-time random walk is defined as the integral of white noise:"),
+          tags$p("$$\\frac{dx(t)}{dt} = w(t)$$"),
+          tags$p("$$\\mathbb{E}[w(t)] = 0, \\qquad 
+            \\mathbb{E}[w(t)w(s)] = q\\,\\delta(t-s)$$"),
+          tags$p("Equivalently,"),
+          tags$p("$$x(t) = \\int_0^t w(\\tau)\\,d\\tau.$$"),
+          
+          tags$p(strong("2) Sampling at frequency \\(f\\)")),
+          tags$p("$$t_k = k\\Delta t, \\qquad \\Delta t = \\frac{1}{f}$$"),
+          
+          tags$p("The increment between two samples is"),
+          tags$p("$$x(t_{k+1}) - x(t_k) = \\int_{t_k}^{t_{k+1}} w(t)\\,dt.$$"),
+          
+          tags$p("Using the covariance definition of white noise, the variance of this increment is"),
+          tags$p("$$\\mathrm{Var}\\big(x(t_{k+1})-x(t_k)\\big) =
+      \\int_{t_k}^{t_{k+1}}\\int_{t_k}^{t_{k+1}}
+      q\\,\\delta(t-s)\\,dt\\,ds
+      = q\\Delta t.$$"),
+          
+          tags$p("Therefore the discrete-time model is"),
+          tags$p("$$x_{k+1} = x_k + \\eta_k, \\qquad 
+            \\eta_k \\sim \\mathcal{N}(0,\\gamma^2)$$"),
+          
+          tags$p("with"),
+          tags$p("$$\\gamma^2 = q\\Delta t = \\frac{q}{f}. $$"),
+          
+          tags$p(strong("3) Parameter conversion")),
+          tags$ul(
+            tags$li(strong("Estimated parameter:"), 
+                    " \\(\\gamma^2\\) (variance of the increments)."),
+            tags$li(strong("Continuous intensity:"), 
+                    " \\(q = \\gamma^2 / \\Delta t = \\gamma^2 f\\)."),
+            tags$li(strong("Returned RW parameter in the KF table:"), 
+                    " \\(\\sqrt{q}\\).")
+          ),
+          
+          tags$p("Units follow the same convention introduced in the WN card."),
+          tags$p("$$[\\gamma^2] = \\diamond^2, \\qquad [q] = \\frac{\\diamond^2}{\\mathrm{s}}, \\qquad
+           [\\sqrt{q}] = \\frac{\\diamond}{\\sqrt{\\mathrm{s}}}
+           = \\frac{\\diamond}{\\mathrm{s}\\sqrt{\\mathrm{Hz}}}. $$")
+          
+        )
+      ),
+      bslib::card(
+        bslib::card_header(h4("Gauss–Markov (GM)")),
+        withMathJax(
+          
+          tags$p(strong("1) Continuous-time model (Ornstein–Uhlenbeck / FOGM)")),
+          tags$p("$$\\frac{dx(t)}{dt} = -\\beta\\,x(t) + w(t)$$"),
+          tags$p("$$\\mathbb{E}[w(t)] = 0, \\qquad 
+            \\mathbb{E}[w(t)w(s)] = q\\,\\delta(t-s)$$"),
+          tags$p("where \\(\\beta>0\\) is the decay rate and \\(q\\) is the continuous-time noise intensity."),
+          
+          tags$p(strong("2) Sampling at frequency \\(f\\) and AR(1) reparametrization")),
+          tags$p("$$t_k = k\\Delta t, \\qquad \\Delta t = \\frac{1}{f}, \\qquad x_k := x(t_k).$$"),
+          
+          tags$p("Over one sampling interval, the solution can be written as a deterministic decay term plus a driven term:"),
+          tags$p("$$x_{k+1} = e^{-\\beta\\Delta t}\\,x_k
+            + \\int_{t_k}^{t_{k+1}} e^{-\\beta(t_{k+1}-\\tau)}\\,w(\\tau)\\,d\\tau.$$"),
+          
+          tags$p("Define the AR(1) parameters"),
+          tags$p("$$\\phi := e^{-\\beta\\Delta t}, \\qquad 
+            \\eta_k := \\int_{t_k}^{t_{k+1}} e^{-\\beta(t_{k+1}-\\tau)}\\,w(\\tau)\\,d\\tau,$$"),
+          tags$p("which yields the discrete-time AR(1) form"),
+          tags$p("$$x_{k+1} = \\phi x_k + \\eta_k, \\qquad \\eta_k \\sim \\mathcal{N}(0,\\sigma^2).$$"),
+          
+          tags$p("Using \\(\\mathbb{E}[w(t)w(s)]=q\\delta(t-s)\\), the innovation variance is"),
+          tags$p("$$\\sigma^2 = \\mathrm{Var}(\\eta_k)
+            = \\frac{q}{2\\beta}\\left(1-e^{-2\\beta\\Delta t}\\right).$$"),
+          
+          tags$p(strong("3) Parameter conversion")),
+          tags$ul(
+            tags$li(strong("Estimated parameters (discrete):"), " \\(\\phi\\) and \\(\\sigma^2\\)."),
+            tags$li(strong("Continuous decay rate:"), " $$\\beta = -\\frac{\\log(\\phi)}{\\Delta t}.$$"),
+            tags$li(strong("Continuous intensity:"), " $$q = \\frac{2\\beta\\sigma^2}{1-e^{-2\\beta\\Delta t}}.$$"),
+            tags$li(strong("Returned GM parameters in the KF table:"), " \\(\\sqrt{q}\\) and \\(1/\\beta\\).")
+          ),
+          
+          tags$p(strong("Units")),
+          tags$p("$$[\\beta] = \\frac{1}{\\mathrm{s}}, \\qquad \\left[\\frac{1}{\\beta}\\right]=\\mathrm{s}.$$"),
+          tags$p("$$[q] = \\frac{\\diamond^2}{\\mathrm{s}}, \\qquad
+           \\left[\\sqrt{q}\\right] = \\frac{\\diamond}{\\sqrt{\\mathrm{s}}}
+           = \\frac{\\diamond}{\\mathrm{s}\\sqrt{\\mathrm{Hz}}}. $$")
+          
+        )
+      ),
+      bslib::card(
+        bslib::card_header(h4("Drift (DR)")),
+        withMathJax(
+          
+          tags$p(strong("1) Continuous-time model")),
+          tags$p("A deterministic drift is defined as a linear trend in time:"),
+          tags$p("$$x(t) = x(0) + \\omega\\,t$$"),
+          tags$p("where \\(\\omega\\) is the drift rate."),
+          
+          tags$p(strong("2) Sampling at frequency \\(f\\)")),
+          tags$p("$$t_k = k\\Delta t, \\qquad \\Delta t = \\frac{1}{f}, \\qquad x_k := x(t_k).$$"),
+          tags$p("This gives"),
+          tags$p("$$x_k = x(0) + \\omega\\,k\\Delta t.$$"),
+          
+          tags$p("Equivalently, the discrete-time recursion is"),
+          tags$p("$$x_{k+1} = x_k + \\mu,$$"),
+          tags$p("with the per-sample drift increment"),
+          tags$p("$$\\mu := \\omega\\Delta t = \\frac{\\omega}{f}. $$"),
+          
+          tags$p(strong("3) Parameter conversion")),
+          tags$ul(
+            tags$li(strong("Estimated parameter:"), " \\(\\mu\\) (drift increment per sample)."),
+            tags$li(strong("Continuous drift rate:"), " \\(\\omega = \\mu/\\Delta t = \\mu f\\)."),
+            tags$li(strong("Returned DR parameter in the KF table:"), " \\(\\omega\\).")
+          ),
+          
+          tags$p(strong("Units")),
+          tags$p("$$[\\omega] = \\frac{\\diamond}{\\mathrm{s}}, \\qquad [\\mu] = \\diamond.$$")
+          
+        )
+      ),
+      bslib::card(
+        bslib::card_header(h4("Quantization Noise (QN)")),
+        withMathJax(
+          
+          tags$p(strong("1) Measurement model")),
+          tags$p("Quantization noise arises from the finite resolution of digital sensors."),
+          tags$p("A continuous signal \\(x(t)\\) is recorded with a quantization step \\(Q\\)."),
+          
+          tags$p("The measured value is"),
+          tags$p("$$x_k^{(m)} = Q\\,\\mathrm{round}\\!\\left(\\frac{x(t_k)}{Q}\\right).$$"),
+          
+          tags$p("The quantization error is"),
+          tags$p("$$e_k = x_k^{(m)} - x(t_k), \\qquad e_k \\in [-Q/2,\\,Q/2].$$"),
+          
+          tags$p("Under the usual assumption that the signal varies sufficiently between samples, the error is modeled as"),
+          tags$p("$$e_k \\sim U(-Q/2,\\,Q/2).$$"),
+          
+          tags$p(strong("2) Discrete-time stochastic representation used in GMWM")),
+          tags$p("To reproduce the theoretical Allan variance / wavelet variance of quantization noise, the process is modeled as"),
+          
+          tags$p("$$x_k = \\sqrt{12Q^2}\\,(Y_k - Y_{k-1}),$$"),
+          
+          tags$p("with"),
+          tags$p("$$Y_k \\sim U(0,1).$$"),
+          
+          tags$p("This construction generates a process whose wavelet variance corresponds to quantization noise."),
+          
+          tags$p(strong("3) Parameter conversion")),
+          tags$ul(
+            tags$li(strong("Estimated parameter:"), " \\(Q^2\\)."),
+            tags$li(strong("Returned QN parameter in the KF table:"), " \\(Q^2\\)."),
+            tags$li("The parameter does not depend on the sampling frequency \\(f\\).")
+          ),
+          
+          tags$p(strong("Units")),
+          tags$p("Since \\(Y_k\\) is dimensionless, the signal and the quantization step share the same unit."),
+          tags$p("$$[Q] = \\diamond, \\qquad [Q^2] = \\diamond^2.$$")
+          
+        )
       )
     )
   )
@@ -364,6 +608,7 @@ ui <- shinyUI(fluidPage(
              
 
              ),
+    details_tab,
     # Help & About tab
     tabPanel(
       "Help",
@@ -373,7 +618,8 @@ ui <- shinyUI(fluidPage(
           7,
           bslib::card(
             bslib::card_header(h4("Help & About")),
-            tags$p("This app provides tools to estimate composite stochastic models for IMU datatsets using the GMWM estimator."),
+            tags$p("This application helps you model stochastic sensor noise from Inertial Measurement Unit time series using the Generalized Method of Wavelet Moments."),
+            tags$p("The workflow is: inspect the wavelet variance, select candidate processes, fit the model, and compare raw estimated parameters with frequency-aware transformed parameters for Kalman-filter usage."),
             # GitHub repo link with logo
             tags$div(
               class = "github-row",
@@ -388,8 +634,9 @@ ui <- shinyUI(fluidPage(
             tags$hr(),
             tags$p(strong("How to use")),
             tags$p("1. Select a dataset (library or custom)."),
-            tags$p("2. Choose a sensor and model components."),
-            tags$p("3. Click “Fit Model” to estimate and review results.")
+            tags$p("2. Choose a sensor channel and model components (WN, RW, GM, DR, QN)."),
+            tags$p("3. Click “Fit Model” to estimate the selected model."),
+            tags$p("4. Review the Summary tab (left: estimated parameters, right: transformed Kalman-filter parameters).")
           )
         ),
         column(
@@ -463,13 +710,6 @@ ui <- shinyUI(fluidPage(
 ################
 server <- function(input, output, session) {
   # === HELP TAB OUTPUTS ===
-  # Render the GitHub repo text link (legacy output; kept for compatibility)
-  output$tabhelpurl <- renderUI({
-    tagList(smac_url_description, smac_url)
-  })
-
-
-
   # Help tab: EPFL logo (uses local file in ./logo)
   output$tabhelpplotlogo_epfl <- renderImage(
     {
@@ -726,14 +966,19 @@ server <- function(input, output, session) {
   tabs_unlocked <- reactiveVal(FALSE)
   observeEvent(input$fit3, {
     if (!tabs_unlocked()) {
-      # Insert 2nd and 3rd tabs right before Help so final order is:
-      # Wavelet Variance -> GMWM fit -> Summary -> Help
-      insertTab(inputId = "tabs", tab = gmwm_fit_tab, target = "help", position = "before", select = FALSE)
-      insertTab(inputId = "tabs", tab = summary_tab, target = "help", position = "before", select = FALSE)
+      # Insert tabs before Details so final order is:
+      # Wavelet Variance -> GMWM fit -> Summary -> Details -> Help
+      insertTab(inputId = "tabs", tab = gmwm_fit_tab, target = "details", position = "before", select = FALSE)
+      insertTab(inputId = "tabs", tab = summary_tab, target = "details", position = "before", select = FALSE)
       tabs_unlocked(TRUE)
     }
     # Select by tab value (works with tabsetPanel + value=...).
     updateTabsetPanel(session, "tabs", selected = "gmwm_fit")
+  })
+
+  # Navigate from Summary helper link to Details tab
+  observeEvent(input$go_details_from_summary, {
+    updateTabsetPanel(session, "tabs", selected = "details")
   })
 
   # Plot estimated fit
@@ -790,7 +1035,7 @@ server <- function(input, output, session) {
   })
 
   # Estimated parameters table (model, parameter, estimate)
-  output$summ <- renderTable({
+  output$summ <- renderUI({
     gmwm_fit <- fit()
     est <- gmwm_fit$estimate
     # Normalize estimate object to a numeric vector
@@ -806,20 +1051,20 @@ server <- function(input, output, session) {
     idx <- 1
     for (i in seq_along(model_desc)) {
       model_name <- model_desc[[i]]
-      params <- param_desc[[i]]
-      # If parameter names are missing or numeric, inject canonical labels
-      if (is.null(params) || length(params) == 0 || is.numeric(params)) {
-        if (model_name == "WN") {
-          params <- "SIGMA2"
-        } else if (model_name == "RW") {
-          params <- "GAMMA2"
-        } else if (model_name == "GM") {
-          params <- c("BETA", "SIGMA2_GM")
-        } else if (model_name == "QN") {
-          params <- "Q2"
-        } else if (model_name == "DR") {
-          params <- "OMEGA"
-        } else {
+      # Always normalize displayed names by process
+      if (model_name == "WN") {
+        params <- "\\(\\sigma^2\\)"
+      } else if (model_name == "RW") {
+        params <- "\\(\\gamma^2\\)"
+      } else if (model_name == "GM") {
+        params <- c("\\(\\beta\\)", "\\(q\\)")
+      } else if (model_name == "QN") {
+        params <- "\\(Q^2\\)"
+      } else if (model_name == "DR") {
+        params <- "\\(\\mu\\)"
+      } else {
+        params <- param_desc[[i]]
+        if (is.null(params) || length(params) == 0 || is.numeric(params)) {
           params <- paste0("param", seq_len(1))
         }
       }
@@ -839,11 +1084,31 @@ server <- function(input, output, session) {
     names(df) <- gsub("\\.", " ", names(df))
     num_cols <- vapply(df, is.numeric, logical(1))
     df[num_cols] <- lapply(df[num_cols], function(x) format(x, scientific = TRUE, digits = const.nb_of_digits))
-    df
-  }, striped = FALSE, bordered = TRUE, spacing = "s")
+
+    table_header <- tags$thead(
+      tags$tr(lapply(names(df), tags$th))
+    )
+    table_body <- tags$tbody(
+      lapply(seq_len(nrow(df)), function(i) {
+        tags$tr(
+          tags$td(df[i, "Model"]),
+          tags$td(HTML(df[i, "Parameter"])),
+          tags$td(df[i, "Estimated parameters"])
+        )
+      })
+    )
+
+    withMathJax(
+      tags$table(
+        class = "table table-bordered table-condensed",
+        table_header,
+        table_body
+      )
+    )
+  })
 
   # Kalman filter transformed parameters table (uses selected frequency)
-  output$summ_kf <- renderTable({
+  output$summ_kf <- renderUI({
     gmwm_fit <- fit()
     freq <- freq_selected()
     df <- transform_parameters(gmwm_fit, freq)
@@ -851,8 +1116,29 @@ server <- function(input, output, session) {
     # Format numeric values
     num_cols <- vapply(df, is.numeric, logical(1))
     df[num_cols] <- lapply(df[num_cols], function(x) format(x, scientific = TRUE, digits = const.nb_of_digits))
-    df
-  }, striped = FALSE, bordered = TRUE, spacing = "s")
+
+    table_header <- tags$thead(
+      tags$tr(lapply(names(df), tags$th))
+    )
+    table_body <- tags$tbody(
+      lapply(seq_len(nrow(df)), function(i) {
+        tags$tr(
+          tags$td(df[i, "Model"]),
+          tags$td(df[i, "Parameter"]),
+          tags$td(df[i, "Estimated transformed parameters"]),
+          tags$td(HTML(df[i, "Units"]))
+        )
+      })
+    )
+
+    withMathJax(
+      tags$table(
+        class = "table table-bordered table-condensed",
+        table_header,
+        table_body
+      )
+    )
+  })
       
 
 }
