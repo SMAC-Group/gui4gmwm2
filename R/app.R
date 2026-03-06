@@ -39,7 +39,7 @@ const.FIGURE_PLOT_HEIGHT <- "60vh"
 const.FIGURE_PLOT_HEIGHT_REDUCED <- "45vh"
 const.FIGURE_PLOT_HEIGHT_LOGO <- "100px"
 
-const.nb_of_digits <- 7
+const.nb_of_digits <- 5
 const.BOOTSTRAP_CI_B <- 10
 
 # convert degrees-per-second to radians-per-second
@@ -163,31 +163,45 @@ summary_tab <- tabPanel(
       6,
       bslib::card(
         bslib::card_header(h4("Kalman Filter estimated parameters")),
-        numericInput(
-          inputId = "freq_input_summary",
-          label = "Sampling frequency of acquired data (Hz)",
-          min = 1,
-          value = const.DATASET_FREQ[[names(data)[1]]],
-          step = 1
+        fluidRow(
+          column(
+            6,
+            numericInput(
+              inputId = "freq_input_summary",
+              label = "Sampling frequency of acquired data (Hz)",
+              min = 1,
+              value = const.DATASET_FREQ[[names(data)[1]]],
+              step = 1
+            )
+          ),
+          column(
+            6,
+            numericInput(
+              inputId = "bootstrap_B",
+              label = "Parametric bootstrap replicates (B)",
+              min = 1,
+              value = const.BOOTSTRAP_CI_B,
+              step = 1
+            )
+          )
         ),
-        uiOutput(outputId = "summ_kf")
-      )
-    )
-  ),
-  br(),
-  fluidRow(
-    column(
-      12,
-      bslib::card(
-        bslib::card_header(h4("Transformed Parameters with Bootstrap CI")),
-        tags$p(
-          class = "text-muted",
-          style = "margin-bottom: 10px;",
-          "Simple parametric bootstrap percentile CI."
+        tags$div(
+          class = "ci-btn-wrap",
+          actionButton(
+            "compute_ci_btn",
+            "Compute parametric bootstrap confidence intervals (CI)"
+          ),
+          tags$div(
+            class = "ci-popover",
+            tags$div(
+              class = "ci-popover-content",
+              tags$span(class = "ci-popover-icon", icon("exclamation-triangle")),
+              tags$span("Parametric bootstrap CI can take a while to compute, especially for large number of bootstrap replicates (B) and/or large signals.")
+            )
+          )
         ),
-        actionButton("compute_ci_btn", "Compute CI"),
         tags$span(style = "margin-left: 8px;", textOutput("ci_status", inline = TRUE)),
-        uiOutput(outputId = "summ_kf_ci")
+        uiOutput(outputId = "summ_kf")
       )
     )
   )
@@ -545,6 +559,59 @@ ui <- shinyUI(fluidPage(
       background-color: #111111;
       border-color: #111111;
     }
+    .ci-btn-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+    .ci-popover {
+      position: absolute;
+      top: calc(100% + 10px);
+      left: 0;
+      width: min(360px, 80vw);
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #f8d7a5;
+      background: linear-gradient(180deg, #fffdf7 0%, #fff7e8 100%);
+      box-shadow: 0 14px 28px rgba(15, 23, 42, 0.15);
+      color: #7c2d12;
+      font-size: 13px;
+      line-height: 1.35;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-4px);
+      transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+      z-index: 1200;
+      pointer-events: none;
+    }
+    .ci-popover:before {
+      content: '';
+      position: absolute;
+      top: -7px;
+      left: 18px;
+      width: 12px;
+      height: 12px;
+      background: #fffaf0;
+      border-top: 1px solid #f8d7a5;
+      border-left: 1px solid #f8d7a5;
+      transform: rotate(45deg);
+    }
+    .ci-popover-content {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .ci-popover-icon {
+      color: #f59e0b;
+      margin-top: 1px;
+      flex: 0 0 auto;
+    }
+    .ci-btn-wrap:hover .ci-popover,
+    .ci-btn-wrap:focus-within .ci-popover {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
     .card .table {
       margin-top: 10px;
       width: 100%;
@@ -872,9 +939,6 @@ server <- function(input, output, session) {
     head(df, 5)
   }, striped = FALSE, bordered = TRUE, spacing = "s")
 
-
-
-
   # === MODEL FITTING ===
   # Fit model (triggered by "Fit Model" action button)
   fit <- eventReactive(input$fit3, {
@@ -982,7 +1046,6 @@ server <- function(input, output, session) {
         gmwm::gmwm(model, wv_obj , robust = F)
       }
      
-
     })
 
 
@@ -1143,51 +1206,31 @@ server <- function(input, output, session) {
     )
   })
 
-  # Kalman filter transformed parameters table (uses selected frequency)
-  output$summ_kf <- renderUI({
-    gmwm_fit <- fit()
-    freq <- freq_selected()
-    df <- transform_parameters(gmwm_fit, freq)
-
-    # Format numeric values
-    num_cols <- vapply(df, is.numeric, logical(1))
-    df[num_cols] <- lapply(df[num_cols], function(x) format(x, scientific = TRUE, digits = const.nb_of_digits))
-
-    table_header <- tags$thead(
-      tags$tr(lapply(names(df), tags$th))
-    )
-    table_body <- tags$tbody(
-      lapply(seq_len(nrow(df)), function(i) {
-        tags$tr(
-          tags$td(df[i, "Model"]),
-          tags$td(df[i, "Parameter"]),
-          tags$td(df[i, "Estimated transformed parameters"]),
-          tags$td(HTML(df[i, "Units"]))
-        )
-      })
-    )
-
-    withMathJax(
-      tags$table(
-        class = "table table-bordered table-condensed",
-        table_header,
-        table_body
-      )
-    )
-  })
-
   ci_running <- reactiveVal(FALSE)
   ci_transformed <- reactiveVal(NULL)
 
   output$ci_status <- renderText({
+    b_reps <- if (is.null(input$bootstrap_B)) const.BOOTSTRAP_CI_B else max(1, as.integer(input$bootstrap_B))
     if (ci_running()) {
       return("Computing...")
     }
     if (is.null(ci_transformed())) {
       return("")
     }
-    paste0("(B = ", const.BOOTSTRAP_CI_B, ", freq = ", freq_selected(), " Hz)")
+    paste0("(B = ", b_reps, ", freq = ", freq_selected(), " Hz)")
   })
+
+  observeEvent(input$fit3, {
+    ci_transformed(NULL)
+  }, ignoreInit = TRUE)
+
+  observeEvent(freq_selected(), {
+    ci_transformed(NULL)
+  }, ignoreInit = TRUE)
+  
+  observeEvent(input$bootstrap_B, {
+    ci_transformed(NULL)
+  }, ignoreInit = TRUE)
 
   observeEvent(input$compute_ci_btn, {
     if (ci_running()) {
@@ -1202,11 +1245,18 @@ server <- function(input, output, session) {
 
     gmwm_fit <- fit()
     freq <- freq_selected()
+    b_reps <- if (is.null(input$bootstrap_B)) const.BOOTSTRAP_CI_B else max(1, as.integer(input$bootstrap_B))
     withProgress(message = "Computing bootstrap confidence intervals...", value = 0, {
       ci_mat <- compute_bootstrap_ci_from_fit(
         object = gmwm_fit,
-        B = const.BOOTSTRAP_CI_B,
-        frequency = freq
+        B = b_reps,
+        frequency = freq,
+        progress_callback = function(b, B) {
+          incProgress(
+            1 / B,
+            detail = paste0("Monte Carlo ", b, " / ", B)
+          )
+        }
       )
       df <- transform_parameters(gmwm_fit, freq)
       ci_mat <- as.matrix(ci_mat)
@@ -1216,17 +1266,25 @@ server <- function(input, output, session) {
     })
   })
 
-  output$summ_kf_ci <- renderUI({
-    df <- ci_transformed()
-    req(!is.null(df))
-    df <- df[, c(
-      "Model",
-      "Parameter",
-      "Estimated transformed parameters",
-      "CI low (transformed parameters)",
-      "CI high (transformed parameters)",
-      "Units"
-    )]
+  # Kalman filter transformed parameters table (base view, replaced by CI view once computed)
+  output$summ_kf <- renderUI({
+    gmwm_fit <- fit()
+    freq <- freq_selected()
+    df_ci <- ci_transformed()
+    has_ci <- !is.null(df_ci)
+
+    if (has_ci) {
+      df <- df_ci[, c(
+        "Model",
+        "Parameter",
+        "Estimated transformed parameters",
+        "CI low (transformed parameters)",
+        "CI high (transformed parameters)",
+        "Units"
+      )]
+    } else {
+      df <- transform_parameters(gmwm_fit, freq)
+    }
 
     num_cols <- vapply(df, is.numeric, logical(1))
     df[num_cols] <- lapply(df[num_cols], function(x) format(x, scientific = TRUE, digits = const.nb_of_digits))
@@ -1234,18 +1292,32 @@ server <- function(input, output, session) {
     table_header <- tags$thead(
       tags$tr(lapply(names(df), tags$th))
     )
-    table_body <- tags$tbody(
-      lapply(seq_len(nrow(df)), function(i) {
-        tags$tr(
-          tags$td(df[i, "Model"]),
-          tags$td(df[i, "Parameter"]),
-          tags$td(df[i, "Estimated transformed parameters"]),
-          tags$td(df[i, "CI low (transformed parameters)"]),
-          tags$td(df[i, "CI high (transformed parameters)"]),
-          tags$td(HTML(df[i, "Units"]))
-        )
-      })
-    )
+
+    if (has_ci) {
+      table_body <- tags$tbody(
+        lapply(seq_len(nrow(df)), function(i) {
+          tags$tr(
+            tags$td(df[i, "Model"]),
+            tags$td(df[i, "Parameter"]),
+            tags$td(df[i, "Estimated transformed parameters"]),
+            tags$td(df[i, "CI low (transformed parameters)"]),
+            tags$td(df[i, "CI high (transformed parameters)"]),
+            tags$td(HTML(df[i, "Units"]))
+          )
+        })
+      )
+    } else {
+      table_body <- tags$tbody(
+        lapply(seq_len(nrow(df)), function(i) {
+          tags$tr(
+            tags$td(df[i, "Model"]),
+            tags$td(df[i, "Parameter"]),
+            tags$td(df[i, "Estimated transformed parameters"]),
+            tags$td(HTML(df[i, "Units"]))
+          )
+        })
+      )
+    }
 
     withMathJax(
       tags$table(
