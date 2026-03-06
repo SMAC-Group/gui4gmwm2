@@ -163,7 +163,7 @@ summary_tab <- tabPanel(
         bslib::card_header(h4("Kalman Filter estimated parameters")),
         numericInput(
           inputId = "freq_input_summary",
-          label = "Sampling frequency (Hz):",
+          label = "Sampling frequency of acquired data (Hz)",
           min = 1,
           value = const.DATASET_FREQ[[names(data)[1]]],
           step = 1
@@ -205,7 +205,7 @@ details_tab <- tabPanel(
           tags$p(strong("1) Continuous-time model")),
           tags$p("$$x(t) = w(t)$$"),
           tags$p("$$\\mathbb{E}[w(t)] = 0, \\qquad 
-            \\mathbb{E}[w(t)w(s)] = q\\,\\delta(t-s)$$"),
+      \\mathbb{E}[w(t)w(s)] = q\\,\\delta(t-s)$$"),
           tags$p("where:"),
           tags$ul(
             tags$li("\\(q\\): continuous-time noise intensity (power spectral density)."),
@@ -215,21 +215,24 @@ details_tab <- tabPanel(
           
           tags$p(strong("2) Sampling at frequency \\(f\\)")),
           tags$p("$$t_k = k\\Delta t, \\qquad \\Delta t = \\frac{1}{f}$$"),
-          tags$p("We define the discrete-time sample at instant \\(t_k\\) as:"),
-          tags$p("$$x_k := x_{t_k} = w(t_k).$$"),
+          tags$p("We define the discrete-time sample over the interval \\([t_k, t_k+\\Delta t]\\) as:"),
+          
+          tags$p("$$x_k := x_{t_k} = \\frac{1}{\\Delta t}\\int_{t_k}^{t_k+\\Delta t} w(t)\\,dt.$$"),
           
           tags$p("Using the covariance definition of white noise, the variance of the sampled process is"),
+          
           tags$p("$$\\mathrm{Var}(x_k) = \\frac{1}{\\Delta t^2}
-      \\int_{t_k}^{t_k+\\Delta t}\\int_{t_k}^{t_k+\\Delta t}
-      q\\,\\delta(t-s)\\,dt\\,ds
-      = \\frac{q}{\\Delta t}. $$"),
+\\int_{t_k}^{t_k+\\Delta t}\\int_{t_k}^{t_k+\\Delta t}
+q\\,\\delta(t-s)\\,dt\\,ds
+= \\frac{q}{\\Delta t}. $$"),
           
           tags$p("Therefore the sampled process is"),
+          
           tags$p("$$x_k \\sim \\mathcal{N}(0,\\sigma^2), \\qquad 
-            \\sigma^2 = \\frac{q}{\\Delta t} = q f.$$")
-          ,
+      \\sigma^2 = \\frac{q}{\\Delta t} = q f.$$"),
           
           tags$p(strong("3) Parameter conversion")),
+          
           tags$ul(
             tags$li(strong("Estimated parameter:"), " \\(\\sigma^2\\) (discrete-time variance)."),
             tags$li(strong("Continuous intensity:"), " \\(q = \\sigma^2\\Delta t = \\sigma^2/f\\)."),
@@ -237,11 +240,15 @@ details_tab <- tabPanel(
           ),
           
           tags$p("Using \\([\\cdot]\\) to denote the units of a quantity, and \\(\\diamond\\) to denote the base unit of the signal."),
+          
           tags$p("Examples: for a gyroscope, \\(\\diamond\\) can be \\(\\frac{\\mathrm{deg}}{\\mathrm{s}}\\) or \\(\\frac{\\mathrm{rad}}{\\mathrm{s}}\\); for an accelerometer, \\(\\diamond\\) can be \\(\\frac{\\mathrm{mm}}{\\mathrm{s}}\\) or \\(\\frac{\\mathrm{m}}{\\mathrm{s}^2}\\)."),
           
           tags$p("Units: if \\([x] = \\diamond\\), then"),
+          
           tags$p("$$[q] = \\frac{\\diamond^2}{\\mathrm{Hz}}$$"),
+          
           tags$p("and therefore"),
+          
           tags$p("$$\\left[\\sqrt{q}\\right] = \\frac{\\diamond}{\\sqrt{\\mathrm{Hz}}}. $$")
           
         )
@@ -309,11 +316,11 @@ details_tab <- tabPanel(
           
           tags$p("Over one sampling interval, the solution can be written as a deterministic decay term plus a driven term:"),
           tags$p("$$x_{k+1} = e^{-\\beta\\Delta t}\\,x_k
-            + \\int_{t_k}^{t_{k+1}} e^{-\\beta(t_{k+1}-\\tau)}\\,w(\\tau)\\,d\\tau.$$"),
+            + \\int_{t_k}^{t_{k+1}} e^{-\\beta(t_{k+1}-s)}\\,w(s)\\,ds.$$"),
           
           tags$p("Define the AR(1) parameters"),
           tags$p("$$\\phi := e^{-\\beta\\Delta t}, \\qquad 
-            \\eta_k := \\int_{t_k}^{t_{k+1}} e^{-\\beta(t_{k+1}-\\tau)}\\,w(\\tau)\\,d\\tau,$$"),
+            \\eta_k := \\int_{t_k}^{t_{k+1}} e^{-\\beta(t_{k+1}-s)}\\,w(s)\\,ds,$$"),
           tags$p("which yields the discrete-time AR(1) form"),
           tags$p("$$x_{k+1} = \\phi x_k + \\eta_k, \\qquad \\eta_k \\sim \\mathcal{N}(0,\\sigma^2).$$"),
           
@@ -328,6 +335,7 @@ details_tab <- tabPanel(
             tags$li(strong("Continuous intensity:"), " $$q = \\frac{2\\beta\\sigma^2}{1-e^{-2\\beta\\Delta t}}.$$"),
             tags$li(strong("Returned GM parameters in the KF table:"), " \\(\\sqrt{q}\\) and \\(1/\\beta\\).")
           ),
+          tags$p("The quantity \\(1/\\beta\\) is often called the correlation time, commonly denoted by \\(\\tau\\)."),
           
           tags$p(strong("Units")),
           tags$p("$$[\\beta] = \\frac{1}{\\mathrm{s}}, \\qquad \\left[\\frac{1}{\\beta}\\right]=\\mathrm{s}.$$"),
@@ -398,7 +406,7 @@ details_tab <- tabPanel(
           tags$p(strong("3) Parameter conversion")),
           tags$ul(
             tags$li(strong("Estimated parameter:"), " \\(Q^2\\)."),
-            tags$li(strong("Returned QN parameter in the KF table:"), " \\(Q^2\\)."),
+            tags$li(strong("Returned QN parameter in the KF table:"), " \\(Q\\)."),
             tags$li("The parameter does not depend on the sampling frequency \\(f\\).")
           ),
           
@@ -542,7 +550,7 @@ ui <- shinyUI(fluidPage(
              # Sampling frequency (Hz); synced with Summary tab
              numericInput(
                inputId = "freq_input",
-               label = "Sampling frequency (Hz):",
+               label = "Sampling frequency of acquired data (Hz):",
                min = 1,
                value = const.DATASET_FREQ[[names(data)[1]]],
                step = 1

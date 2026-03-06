@@ -116,9 +116,9 @@ transform_parameters = function(gmwm_fit, frequency){
       q2_hat = gmwm_fit$estimate[th_param] 
       rows[[length(rows) + 1]] = data.frame(
         "Model" = model_name,
-        "Parameter" = "\\(Q^2\\)",
-        "Estimated transformed parameters" = q2_hat,
-        "Units" = "\\(\\diamond^2\\)",
+        "Parameter" = "\\(Q\\)",
+        "Estimated transformed parameters" = sqrt(q2_hat),
+        "Units" = "\\(\\diamond\\)",
         stringsAsFactors = FALSE
       )
       th_param = th_param + 1

@@ -196,3 +196,29 @@ n=10000
 x = gen_gts(mod, n=n)
 fit = gmwm::gmwm(model = QN(), input = wv::wvar(x))
 fit$estimate
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# test boot strap
+n = 10000
+sigma2 = 1
+x = rnorm(n = n,mean = 0, sd = sqrt(sigma2))
+wv_emp = wv::wvar(x)
+plot(wv_emp)
+fit =gmwm::gmwm(model = WN(), input = wv_emp) 
+summary(fit, inference = T)
+gmwm::summary.gmwm
+simts:::summary.gmwm(fit, inference = T)
+
+
