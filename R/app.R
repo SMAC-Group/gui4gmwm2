@@ -22,6 +22,7 @@ load("data/imudata.RData")
 source("my_plot_wvar.R")
 source("my_plot_gmwm.R")
 source("transform_parameters.R")
+source("parametric_bootstrap_for_ci.R")
 
 
 
@@ -39,6 +40,7 @@ const.FIGURE_PLOT_HEIGHT_REDUCED <- "45vh"
 const.FIGURE_PLOT_HEIGHT_LOGO <- "100px"
 
 const.nb_of_digits <- 7
+const.BOOTSTRAP_CI_B <- 10
 
 # convert degrees-per-second to radians-per-second
 const.degps_2_radps <- 1 / 360 * 2 * pi
@@ -169,6 +171,23 @@ summary_tab <- tabPanel(
           step = 1
         ),
         uiOutput(outputId = "summ_kf")
+      )
+    )
+  ),
+  br(),
+  fluidRow(
+    column(
+      12,
+      bslib::card(
+        bslib::card_header(h4("Transformed Parameters with Bootstrap CI")),
+        tags$p(
+          class = "text-muted",
+          style = "margin-bottom: 10px;",
+          "Simple parametric bootstrap percentile CI."
+        ),
+        actionButton("compute_ci_btn", "Compute CI"),
+        tags$span(style = "margin-left: 8px;", textOutput("ci_status", inline = TRUE)),
+        uiOutput(outputId = "summ_kf_ci")
       )
     )
   )
@@ -1156,7 +1175,87 @@ server <- function(input, output, session) {
       )
     )
   })
-      
+
+  ci_running <- reactiveVal(FALSE)
+  ci_transformed <- reactiveVal(NULL)
+
+  output$ci_status <- renderText({
+    if (ci_running()) {
+      return("Computing...")
+    }
+    if (is.null(ci_transformed())) {
+      return("")
+    }
+    paste0("(B = ", const.BOOTSTRAP_CI_B, ", freq = ", freq_selected(), " Hz)")
+  })
+
+  observeEvent(input$compute_ci_btn, {
+    if (ci_running()) {
+      return()
+    }
+    ci_running(TRUE)
+    shinyjs::disable("compute_ci_btn")
+    on.exit({
+      ci_running(FALSE)
+      shinyjs::enable("compute_ci_btn")
+    }, add = TRUE)
+
+    gmwm_fit <- fit()
+    freq <- freq_selected()
+    withProgress(message = "Computing bootstrap confidence intervals...", value = 0, {
+      ci_mat <- compute_bootstrap_ci_from_fit(
+        object = gmwm_fit,
+        B = const.BOOTSTRAP_CI_B,
+        frequency = freq
+      )
+      df <- transform_parameters(gmwm_fit, freq)
+      ci_mat <- as.matrix(ci_mat)
+      df$`CI low (transformed parameters)` <- as.numeric(ci_mat[1, seq_len(nrow(df))])
+      df$`CI high (transformed parameters)` <- as.numeric(ci_mat[2, seq_len(nrow(df))])
+      ci_transformed(df)
+    })
+  })
+
+  output$summ_kf_ci <- renderUI({
+    df <- ci_transformed()
+    req(!is.null(df))
+    df <- df[, c(
+      "Model",
+      "Parameter",
+      "Estimated transformed parameters",
+      "CI low (transformed parameters)",
+      "CI high (transformed parameters)",
+      "Units"
+    )]
+
+    num_cols <- vapply(df, is.numeric, logical(1))
+    df[num_cols] <- lapply(df[num_cols], function(x) format(x, scientific = TRUE, digits = const.nb_of_digits))
+
+    table_header <- tags$thead(
+      tags$tr(lapply(names(df), tags$th))
+    )
+    table_body <- tags$tbody(
+      lapply(seq_len(nrow(df)), function(i) {
+        tags$tr(
+          tags$td(df[i, "Model"]),
+          tags$td(df[i, "Parameter"]),
+          tags$td(df[i, "Estimated transformed parameters"]),
+          tags$td(df[i, "CI low (transformed parameters)"]),
+          tags$td(df[i, "CI high (transformed parameters)"]),
+          tags$td(HTML(df[i, "Units"]))
+        )
+      })
+    )
+
+    withMathJax(
+      tags$table(
+        class = "table table-bordered table-condensed",
+        table_header,
+        table_body
+      )
+    )
+  })
+
 
 }
 

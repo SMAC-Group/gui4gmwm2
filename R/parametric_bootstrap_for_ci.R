@@ -3,45 +3,56 @@
 # # coming from summary.gmwm
 # 
 # 
-# compute_bootstrap_ci_from_fit = function (object, B=100, frequency=1){
-#   
-#   # #----------------------------------
-#   # DO NOT ERASE
-#   # # test boot strap
-#   # n = 10000
-#   # sigma2 = 2
-#   # x = rnorm(n = n,mean = 0, sd = sqrt(sigma2))
-#   # wv_emp = wv::wvar(x)
-#   # plot(wv_emp)
-#   # object =gmwm::gmwm(model = WN()+GM(), input = wv_emp) 
-#   # B = 100
-#   # #---------------------------------------------------
-#   
-#   
-#   
-#   
-#   B=10
-#   # create matrix to store estimated param in the bootstrap procedure
-#   mat_res = matrix(NA, nrow = B, ncol = length(object$estimate))
-#   for(b in seq(B)){
-#     # b=1
-#     # set seed
-#     set.seed(123 + b)
-#     # generate data from signal
-#     generated_ts = gen_model(fit$N, theta = fit$estimate, desc =   fit$model$desc, objdesc = fit$model$obj.desc);
-#     # get wv on generated ts
-#     wv_emp_generated_ts = wv::wvar(generated_ts)
-#     # fit gmwm on generated ts
-#     fit = gmwm::gmwm(model = fit$model, input = wv_emp_generated_ts)
-#     # save estimated parameters
-#     mat_res[b,] = fit$estimate
-#   }
-#   
-#   
-#   # compute wv
-#   # wv_emp = wv::wvar(x)
-#   
-#   
+compute_bootstrap_ci_from_fit = function (object, B=100, frequency=1){
+
+  # #----------------------------------
+  # DO NOT ERASE
+  # test boot strap
+  # library(simts)
+  # n = 10000
+  # sigma2 = 2
+  # sigma2/100
+  # gamma2 = .01
+  # gamma2*100
+  # x = rnorm(n = n,mean = 0, sd = sqrt(sigma2)) + cumsum(rnorm(n, mean = 0, sd = sqrt(gamma2)))
+  # wv_emp = wv::wvar(x)
+  # plot(wv_emp)
+  # object =gmwm::gmwm(model = WN()+RW(), input = wv_emp)
+  # B = 100
+  # frequency=100
+  # #---------------------------------------------------
+
+
+
+
+
+  # create matrix to store estimated param in the bootstrap procedure
+  mat_res = matrix(NA, nrow = B, ncol = length(object$estimate))
+  for(b in seq(B)){
+
+    # set seed
+    set.seed(123 + b)
+    # generate data from signal
+    generated_ts = gen_model(object$N, theta = object$estimate, desc =   object$model$desc, objdesc = object$model$obj.desc);
+    # get wv on generated ts
+    wv_emp_generated_ts = wv::wvar(generated_ts)
+    # fit gmwm on generated ts
+    fit = gmwm::gmwm(model = object$model, input = wv_emp_generated_ts)
+    df_param_trans = transform_parameters(fit, frequency = frequency)
+    # save estimated parameters
+    mat_res[b,] = df_param_trans$`Estimated transformed parameters`
+  }
+  # compute percentile CI
+  percentile_boot_ci = apply(mat_res, 2, quantile, probs = c(0.025, 0.975))
+  # return CI
+  return(percentile_boot_ci)
+}
+
+
+  # compute wv
+  # wv_emp = wv::wvar(x)
+
+
 #   
 #   # summary(fit, inference = T)
 #   # gmwm::summary.gmwm(fit, inference = T)
