@@ -1260,8 +1260,15 @@ server <- function(input, output, session) {
       )
       df <- transform_parameters(gmwm_fit, freq)
       ci_mat <- as.matrix(ci_mat)
-      df$`CI low (transformed parameters)` <- as.numeric(ci_mat[1, seq_len(nrow(df))])
-      df$`CI high (transformed parameters)` <- as.numeric(ci_mat[2, seq_len(nrow(df))])
+      ci_low <- as.numeric(ci_mat[1, seq_len(nrow(df))])
+      ci_high <- as.numeric(ci_mat[2, seq_len(nrow(df))])
+      df$`95% CI (transformed parameters)` <- paste0(
+        "[",
+        format(ci_low, scientific = TRUE, digits = const.nb_of_digits),
+        ", ",
+        format(ci_high, scientific = TRUE, digits = const.nb_of_digits),
+        "]"
+      )
       ci_transformed(df)
     })
   })
@@ -1278,8 +1285,7 @@ server <- function(input, output, session) {
         "Model",
         "Parameter",
         "Estimated transformed parameters",
-        "CI low (transformed parameters)",
-        "CI high (transformed parameters)",
+        "95% CI (transformed parameters)",
         "Units"
       )]
     } else {
@@ -1300,8 +1306,7 @@ server <- function(input, output, session) {
             tags$td(df[i, "Model"]),
             tags$td(df[i, "Parameter"]),
             tags$td(df[i, "Estimated transformed parameters"]),
-            tags$td(df[i, "CI low (transformed parameters)"]),
-            tags$td(df[i, "CI high (transformed parameters)"]),
+            tags$td(df[i, "95% CI (transformed parameters)"]),
             tags$td(HTML(df[i, "Units"]))
           )
         })
