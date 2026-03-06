@@ -22,17 +22,27 @@ transform_parameters = function(gmwm_fit, frequency){
     stop("model must be of class gmwm")
   }
 
-  number_models = length(gmwm_fit$model$desc)
+  model_desc = as.character(gmwm_fit$model$desc)
+  number_models = length(model_desc)
+  gm_total = sum(model_desc == "GM")
+  gm_idx = 0
   rows = list()
   th_param = 1
 
   for(i in seq(number_models)){
-    model_name = gmwm_fit$model$desc[i]
+    model_name = model_desc[i]
+    model_label = model_name
+    if (model_name == "GM") {
+      gm_idx = gm_idx + 1
+      if (gm_total > 1) {
+        model_label = paste0("GM", gm_idx)
+      }
+    }
 
     if(model_name == "WN"){
       sigma2_trans = gmwm_fit$estimate[th_param] / frequency
       rows[[length(rows) + 1]] = data.frame(
-        "Model" = model_name,
+        "Model" = model_label,
         "Parameter" = "\\(\\sqrt{q}\\)",
         "Estimated transformed parameters" = sqrt(sigma2_trans),
         # MathJax/LaTeX unit example for White Noise
@@ -43,7 +53,7 @@ transform_parameters = function(gmwm_fit, frequency){
     }else if(model_name == "RW"){
       gamma_2_trans = gmwm_fit$estimate[th_param] * frequency
       rows[[length(rows) + 1]] = data.frame(
-        "Model" = model_name,
+        "Model" = model_label,
         "Parameter" ="\\(\\sqrt{q}\\)",
         "Estimated transformed parameters" = sqrt(gamma_2_trans),
         "Units" = "\\(\\frac{\\diamond}{s \\sqrt{\\mathrm{Hz}}} \\)",
@@ -98,14 +108,14 @@ transform_parameters = function(gmwm_fit, frequency){
 
 
       rows[[length(rows) + 1]] = data.frame(
-        "Model" = model_name,
+        "Model" = model_label,
         "Parameter" = "\\(\\frac{1}{\\beta} \\)",
         "Estimated transformed parameters" =1/beta ,
         "Units" = "s",
         stringsAsFactors = FALSE
       )
       rows[[length(rows) + 1]] = data.frame(
-        "Model" = model_name,
+        "Model" = model_label,
         "Parameter" = "\\(\\sqrt{q} \\)",
         "Estimated transformed parameters" = sqrt(psd),
         "Units" = "\\(\\frac{\\diamond}{s \\sqrt{\\mathrm{Hz}}} \\)",
@@ -115,7 +125,7 @@ transform_parameters = function(gmwm_fit, frequency){
     }else if(model_name == "QN"){
       q2_hat = gmwm_fit$estimate[th_param] 
       rows[[length(rows) + 1]] = data.frame(
-        "Model" = model_name,
+        "Model" = model_label,
         "Parameter" = "\\(Q\\)",
         "Estimated transformed parameters" = sqrt(q2_hat),
         "Units" = "\\(\\diamond\\)",
@@ -127,7 +137,7 @@ transform_parameters = function(gmwm_fit, frequency){
       omega_hat = mu_hat * frequency
       
       rows[[length(rows) + 1]] = data.frame(
-        "Model" = model_name,
+        "Model" = model_label,
         "Parameter" = "\\(\\omega\\)",
         "Estimated transformed parameters" = omega_hat,
         "Units" =  "\\(\\frac{\\diamond}{s} \\)",

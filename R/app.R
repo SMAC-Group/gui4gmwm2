@@ -1053,12 +1053,21 @@ server <- function(input, output, session) {
       }
       est <- as.numeric(est)
     }
-    model_desc <- gmwm_fit$model$desc
+    model_desc <- as.character(gmwm_fit$model$desc)
     param_desc <- gmwm_fit$model$obj.desc
+    gm_total <- sum(model_desc == "GM")
+    gm_idx <- 0
     rows <- list()
     idx <- 1
     for (i in seq_along(model_desc)) {
       model_name <- model_desc[[i]]
+      model_label <- model_name
+      if (model_name == "GM") {
+        gm_idx <- gm_idx + 1
+        if (gm_total > 1) {
+          model_label <- paste0("GM", gm_idx)
+        }
+      }
       # Always normalize displayed names by process
       if (model_name == "WN") {
         params <- "\\(\\sigma^2\\)"
@@ -1079,7 +1088,7 @@ server <- function(input, output, session) {
       for (p in seq_along(params)) {
         # One row per parameter
         rows[[length(rows) + 1]] <- data.frame(
-          Model = model_name,
+          Model = model_label,
           Parameter = as.character(params[[p]]),
           `Estimated parameters` = est[[idx]],
           stringsAsFactors = FALSE
