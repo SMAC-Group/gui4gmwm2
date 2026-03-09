@@ -23,6 +23,7 @@ source("my_plot_wvar.R")
 source("my_plot_gmwm.R")
 source("transform_parameters.R")
 source("parametric_bootstrap_for_ci.R")
+source("functions_for_wn_gm.R")
 
 
 
@@ -1009,7 +1010,14 @@ server <- function(input, output, session) {
 
       # Compute gmwm fit using either raw data (library) or WV object (custom)
       if ("library" %in% input$data_input_choice){ 
-        gmwm::gmwm(model, data[[input$imu_obj]][[input$selected_sensor]], robust = F)
+        
+        # specific fitting if model is wn and ar1 /GM
+        if(is_exact_wn_gm_model(model) ){
+          fit_gmwm_wn_gm(data[[input$imu_obj]][[input$selected_sensor]])
+        }else{
+          gmwm::gmwm(model, data[[input$imu_obj]][[input$selected_sensor]], robust = F)
+          
+        }
       }else{
         inFile <- input$user_defined_txt_file
         my_data <- tryCatch(
@@ -1043,7 +1051,16 @@ server <- function(input, output, session) {
         if (is.null(wv_obj)) {
           return(NULL)
         }
-        gmwm::gmwm(model, wv_obj , robust = F)
+        
+        
+        
+        if(is_exact_wn_gm_model(model) ){
+          fit_gmwm_wn_gm(wv_obj)
+        }else{
+          gmwm::gmwm(model, wv_obj , robust = F)
+          
+        }
+        
       }
      
     })

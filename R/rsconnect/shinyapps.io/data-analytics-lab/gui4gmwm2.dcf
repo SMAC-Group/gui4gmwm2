@@ -5,7 +5,7 @@ account: data-analytics-lab
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 16793479
-bundleId: 11678698
+bundleId: 11684365
 url: https://data-analytics-lab.shinyapps.io/gui4gmwm2/
 asMultiple: FALSE
 asStatic: FALSE
