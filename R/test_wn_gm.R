@@ -38,7 +38,7 @@ phi
 sigma2 <- (q / (2 * beta)) * (1 - exp(-2 * beta * delta_t))
 sigma2
 
-# this cause a problem when you boostrap currently with GM!!!
+# i think this cause a problem when you boostrap currently with GM!!!
 # simts:::gm_to_ar1(c(beta, q), freq=100)
 
 # wn continuous param
